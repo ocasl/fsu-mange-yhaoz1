@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <ns1:invoke xmlns:ns1="http://webservice/">
+      <ns1:xmlStr><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<Request>
+  <PK_Type>
+    <n>LOGIN</n>
+    <Code>101</Code>
+  </PK_Type>
+  <Info>
+    <UserName>1111</UserName>
+    <PaSCword>1111</PaSCword>
+    <FsuId>FSU202409100001</FsuId>
+    <FsuCode>FSU202409100001</FsuCode>
+    <FsuIP>192.168.1.100</FsuIP>
+    <MacId>869221025266666</MacId>
+    <ImsiId>460068161666666</ImsiId>
+    <NetworkType>4G</NetworkType>
+    <LockedNetworkType>LTE</LockedNetworkType>
+    <Carrier>CU</Carrier>
+    <NMVendor>华为</NMVendor>
+    <NMType>DTM-W101T</NMType>
+    <Internet_mode>wireless</Internet_mode>
+    <Reg_Mode>2</Reg_Mode>
+    <FSUVendor>中兴</FSUVendor>
+    <FSUType>标准型</FSUType>
+    <FSUClass>INTSTAN</FSUClass>
+    <Version>v1.0.0</Version>
+    <DictVersion>1</DictVersion>
+    <DeviceList>
+      <Device Id="FSU202409100001" Code="FSU202409100001"/>
+      <Device Id="POWER001" Code="POWER001"/>
+      <Device Id="BATTERY001" Code="BATTERY001"/>
+      <Device Id="TEMP001" Code="TEMP001"/>
+      <Device Id="WATER001" Code="WATER001"/>
+      <Device Id="SMOKE001" Code="SMOKE001"/>
+    </DeviceList>
+    <MainVPN>vpn.example.com:1194</MainVPN>
+    <MainVPN_One>vpn.example.com:1194</MainVPN_One>
+    <MainVPN_Two>vpn.example.com:1194</MainVPN_Two>
+    <Disaster_Recovery_One>vpn-backup.example.com:1194</Disaster_Recovery_One>
+  </Info>
+</Request>]]></ns1:xmlStr>
+    </ns1:invoke>
+  </soapenv:Body>
+</soapenv:Envelope>

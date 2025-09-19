@@ -1,0 +1,24 @@
+{
+  "name": "fsu-online-system",
+  "version": "1.0.0",
+  "description": "FSU设备上线管理系统",
+  "main": "index.js",
+  "scripts": {
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm start",
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "start:backend": "cd backend && npm start",
+    "build:frontend": "cd frontend && npm run build"
+  },
+  "keywords": [
+    "fsu",
+    "device",
+    "online",
+    "management"
+  ],
+  "author": "FSU Team",
+  "license": "MIT",
+  "dependencies": {
+    "node-vpn-client": "^0.0.16"
+  }
+}

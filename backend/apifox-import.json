@@ -1,0 +1,787 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "FSU管理系统API",
+    "description": "FSU管理系统API接口文档，包含FSU上线和告警管理功能",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3001/api",
+      "description": "本地开发环境"
+    }
+  ],
+  "tags": [
+    {
+      "name": "FSU上线管理",
+      "description": "FSU上线相关接口"
+    },
+    {
+      "name": "告警管理",
+      "description": "告警上报和清除相关接口"
+    }
+  ],
+  "paths": {
+    "/fsu/online/list": {
+      "get": {
+        "tags": ["FSU上线管理"],
+        "summary": "获取FSU上线列表",
+        "description": "分页获取FSU上线记录列表，支持多种筛选条件",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，默认1",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "每页数量，默认10",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "fsuid",
+            "in": "query",
+            "description": "FSU ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "siteName",
+            "in": "query",
+            "description": "站点名称",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "softwareVendor",
+            "in": "query",
+            "description": "软件厂家",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "hardwareVendor",
+            "in": "query",
+            "description": "硬件厂家",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fsuType",
+            "in": "query",
+            "description": "FSU类别",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功获取FSU上线列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "list": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/FsuOnline"
+                          }
+                        },
+                        "total": {
+                          "type": "integer",
+                          "example": 100
+                        },
+                        "page": {
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "pageSize": {
+                          "type": "integer",
+                          "example": 10
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/fsu/online": {
+      "post": {
+        "tags": ["FSU上线管理"],
+        "summary": "添加FSU上线记录",
+        "description": "添加FSU上线记录并执行上线流程",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "fsuid",
+                  "siteName",
+                  "scServerAddress",
+                  "mainVpn",
+                  "softwareVendor",
+                  "hardwareVendor",
+                  "fsuType",
+                  "version"
+                ],
+                "properties": {
+                  "fsuid": {
+                    "type": "string",
+                    "example": "FSU202409100001"
+                  },
+                  "siteName": {
+                    "type": "string",
+                    "example": "北京朝阳基站"
+                  },
+                  "scServerAddress": {
+                    "type": "string",
+                    "example": "192.168.1.100"
+                  },
+                  "mainVpn": {
+                    "type": "string",
+                    "example": "vpn.example.com:1194"
+                  },
+                  "softwareVendor": {
+                    "type": "string",
+                    "example": "华为"
+                  },
+                  "hardwareVendor": {
+                    "type": "string",
+                    "example": "中兴"
+                  },
+                  "fsuType": {
+                    "type": "string",
+                    "example": "标准型"
+                  },
+                  "version": {
+                    "type": "string",
+                    "example": "v1.0.0"
+                  },
+                  "powerId": {
+                    "type": "string",
+                    "example": "POWER001"
+                  },
+                  "batteryId": {
+                    "type": "string",
+                    "example": "BATTERY001"
+                  },
+                  "temperatureId": {
+                    "type": "string",
+                    "example": "TEMP001"
+                  },
+                  "waterLeakageId": {
+                    "type": "string",
+                    "example": "WATER001"
+                  },
+                  "smokeDetectorId": {
+                    "type": "string",
+                    "example": "SMOKE001"
+                  },
+                  "creator": {
+                    "type": "string",
+                    "example": "admin"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "FSU上线记录添加成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/FsuOnline"
+                    },
+                    "loginResult": {
+                      "type": "object",
+                      "properties": {
+                        "success": {
+                          "type": "boolean",
+                          "example": true
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "FSU登录成功"
+                        }
+                      }
+                    },
+                    "processTime": {
+                      "type": "integer",
+                      "example": 1500
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/alarm/report": {
+      "post": {
+        "tags": ["告警管理"],
+        "summary": "上报告警",
+        "description": "向SC服务器上报告警信息",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "fsuid",
+                  "signalId",
+                  "alarmDesc",
+                  "deviceId",
+                  "collectorIp"
+                ],
+                "properties": {
+                  "fsuid": {
+                    "type": "string",
+                    "example": "FSU202409100001"
+                  },
+                  "signalId": {
+                    "type": "string",
+                    "example": "0418101001"
+                  },
+                  "alarmDesc": {
+                    "type": "string",
+                    "example": "温度过高（40℃）"
+                  },
+                  "deviceId": {
+                    "type": "string",
+                    "example": "TEMP001"
+                  },
+                  "collectorIp": {
+                    "type": "string",
+                    "example": "192.168.1.100"
+                  },
+                  "alarmLevel": {
+                    "type": "string",
+                    "example": "1"
+                  },
+                  "creator": {
+                    "type": "string",
+                    "example": "admin"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "告警上报成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AlarmRecord"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "告警上报成功"
+                    },
+                    "processTime": {
+                      "type": "integer",
+                      "example": 1200
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/alarm/clear": {
+      "post": {
+        "tags": ["告警管理"],
+        "summary": "清除告警",
+        "description": "向SC服务器发送告警清除请求",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "fsuid",
+                  "signalId",
+                  "alarmDesc",
+                  "deviceId",
+                  "collectorIp"
+                ],
+                "properties": {
+                  "fsuid": {
+                    "type": "string",
+                    "example": "FSU202409100001"
+                  },
+                  "signalId": {
+                    "type": "string",
+                    "example": "0418101001"
+                  },
+                  "alarmDesc": {
+                    "type": "string",
+                    "example": "电池熔丝故障告警"
+                  },
+                  "deviceId": {
+                    "type": "string",
+                    "example": "BATTERY001"
+                  },
+                  "collectorIp": {
+                    "type": "string",
+                    "example": "192.168.1.100"
+                  },
+                  "creator": {
+                    "type": "string",
+                    "example": "admin"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "告警清除成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/AlarmRecord"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "告警清除成功"
+                    },
+                    "processTime": {
+                      "type": "integer",
+                      "example": 1200
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/alarm/{type}/list": {
+      "get": {
+        "tags": ["告警管理"],
+        "summary": "获取告警记录列表",
+        "description": "分页获取告警记录列表，支持筛选条件",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "path",
+            "required": true,
+            "description": "告警类型：report（上报）或clear（清除）",
+            "schema": {
+              "type": "string",
+              "enum": ["report", "clear"]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码，默认1",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "description": "每页数量，默认10",
+            "schema": {
+              "type": "integer",
+              "default": 10
+            }
+          },
+          {
+            "name": "fsuid",
+            "in": "query",
+            "description": "FSU ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "signalId",
+            "in": "query",
+            "description": "信号量ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "alarmDesc",
+            "in": "query",
+            "description": "告警描述",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "deviceId",
+            "in": "query",
+            "description": "设备ID",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功获取告警记录列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "list": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/AlarmRecord"
+                          }
+                        },
+                        "total": {
+                          "type": "integer",
+                          "example": 100
+                        },
+                        "page": {
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "pageSize": {
+                          "type": "integer",
+                          "example": 10
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "服务器错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "FsuOnline": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "example": "6123456789abcdef01234567"
+          },
+          "fsuid": {
+            "type": "string",
+            "example": "FSU202409100001"
+          },
+          "siteName": {
+            "type": "string",
+            "example": "北京朝阳基站"
+          },
+          "scServerAddress": {
+            "type": "string",
+            "example": "192.168.1.100"
+          },
+          "mainVpn": {
+            "type": "string",
+            "example": "vpn.example.com:1194"
+          },
+          "softwareVendor": {
+            "type": "string",
+            "example": "华为"
+          },
+          "hardwareVendor": {
+            "type": "string",
+            "example": "中兴"
+          },
+          "fsuType": {
+            "type": "string",
+            "example": "标准型"
+          },
+          "version": {
+            "type": "string",
+            "example": "v1.0.0"
+          },
+          "powerId": {
+            "type": "string",
+            "example": "POWER001"
+          },
+          "batteryId": {
+            "type": "string",
+            "example": "BATTERY001"
+          },
+          "temperatureId": {
+            "type": "string",
+            "example": "TEMP001"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["online", "offline", "connecting"],
+            "example": "online"
+          },
+          "lastHeartbeatTime": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-09-10T08:00:00.000Z"
+          },
+          "creator": {
+            "type": "string",
+            "example": "admin"
+          },
+          "createTime": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-09-10T08:00:00.000Z"
+          },
+          "updateTime": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-09-10T08:00:00.000Z"
+          }
+        }
+      },
+      "AlarmRecord": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "example": "6123456789abcdef01234567"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["report", "clear"],
+            "example": "report"
+          },
+          "fsuid": {
+            "type": "string",
+            "example": "FSU202409100001"
+          },
+          "signalId": {
+            "type": "string",
+            "example": "0418101001"
+          },
+          "alarmDesc": {
+            "type": "string",
+            "example": "温度过高（40℃）"
+          },
+          "deviceId": {
+            "type": "string",
+            "example": "TEMP001"
+          },
+          "collectorIp": {
+            "type": "string",
+            "example": "192.168.1.100"
+          },
+          "serialNo": {
+            "type": "string",
+            "example": "ALARM20240910001"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["success", "failed", "pending"],
+            "example": "success"
+          },
+          "responseCode": {
+            "type": "string",
+            "example": "200"
+          },
+          "responseMessage": {
+            "type": "string",
+            "example": "操作成功"
+          },
+          "creator": {
+            "type": "string",
+            "example": "admin"
+          },
+          "reportTime": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-09-10T08:00:00.000Z"
+          },
+          "createTime": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-09-10T08:00:00.000Z"
+          },
+          "updateTime": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2024-09-10T08:00:00.000Z"
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "message": {
+            "type": "string",
+            "example": "操作失败"
+          },
+          "error": {
+            "type": "string",
+            "example": "VALIDATION_ERROR"
+          }
+        }
+      }
+    }
+  }
+}
