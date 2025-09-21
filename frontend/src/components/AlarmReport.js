@@ -14,6 +14,7 @@ import {
   Typography,
   Alert,
   Tooltip,
+  Select,
 } from "antd";
 import {
   PlusOutlined,
@@ -91,7 +92,7 @@ const AlarmReport = () => {
         ...searchParams,
       };
 
-      const response = await fsuApi.getAlarmList("report", params);
+      const response = await fsuApi.getAlarmList(params);
       const result = handleApiResponse(response);
 
       setDataSource(result.data.list || []);
@@ -168,7 +169,15 @@ const AlarmReport = () => {
   const handleGetScip = async () => {
     try {
       setScipLoading(true);
-      const response = await fsuApi.getScipFromLogs();
+
+      // 获取当前表单中的FSU ID
+      const currentFsuId = form.getFieldValue("fsuid");
+      if (!currentFsuId || currentFsuId.trim() === "") {
+        message.warning("请先填写FSU ID，然后再获取SCIP");
+        return;
+      }
+
+      const response = await fsuApi.getScipFromLogs(currentFsuId);
       const result = handleApiResponse(response);
 
       if (result.success && result.data.scip) {
@@ -178,7 +187,10 @@ const AlarmReport = () => {
           message.info(`来源: ${result.data.source}`);
         }
       } else {
-        message.warning(result.message || "未找到SCIP信息");
+        message.warning(
+          result.message ||
+            `未找到FSU ${currentFsuId} 的SCIP信息，可能该设备未通过本软件注册，请手动填写或前往OMC系统查询`
+        );
       }
     } catch (error) {
       const errorMsg = handleApiError(error);
@@ -336,7 +348,7 @@ const AlarmReport = () => {
           <Tooltip title="删除">
             <Popconfirm
               title="确定要删除这条记录吗？"
-              onConfirm={() => handleDelete(record.id)}
+              onConfirm={() => handleDelete(record._id || record.id)}
               okText="确定"
               cancelText="取消"
             >
@@ -363,6 +375,23 @@ const AlarmReport = () => {
         </Title>
         <Text type="secondary">向运监平台上报告警信息</Text>
       </div>
+
+      {/* 权限提示 */}
+      <Alert
+        message={
+          JSON.parse(localStorage.getItem("user") || "{}")?.role === "admin"
+            ? "总账号权限：您可以查看所有用户的告警记录"
+            : "子账号权限：您只能查看自己创建的告警记录"
+        }
+        type={
+          JSON.parse(localStorage.getItem("user") || "{}")?.role === "admin"
+            ? "success"
+            : "info"
+        }
+        showIcon
+        style={{ marginBottom: 24 }}
+        closable
+      />
 
       {/* 搜索筛选区域 */}
       <Card title="查询筛选" style={{ marginBottom: 24 }}>
@@ -430,7 +459,7 @@ const AlarmReport = () => {
         <Table
           columns={columns}
           dataSource={dataSource}
-          rowKey="id"
+          rowKey={(record) => record._id || record.id}
           loading={tableLoading}
           pagination={{
             ...pagination,
@@ -502,6 +531,19 @@ const AlarmReport = () => {
             rules={[{ required: true, message: "请输入设备ID" }]}
           >
             <Input placeholder="例如：61082406000006" />
+          </Form.Item>
+
+          <Form.Item
+            name="alarmLevel"
+            label="告警等级"
+            rules={[{ required: true, message: "请选择告警等级" }]}
+          >
+            <Select placeholder="请选择告警等级">
+              <Select.Option value="1">1级（紧急告警）</Select.Option>
+              <Select.Option value="2">2级（重要告警）</Select.Option>
+              <Select.Option value="3">3级（次要告警）</Select.Option>
+              <Select.Option value="4">4级（警告告警）</Select.Option>
+            </Select>
           </Form.Item>
 
           <Form.Item

@@ -4,12 +4,18 @@ const fsuOnlineRoutes = require("./fsuOnlineRoutes");
 const alarmRoutes = require("./alarmRoutes");
 const configRoutes = require("./configRoutes");
 const heartbeatRoutes = require("./heartbeatRoutes");
+const userRoutes = require("./userRoutes");
+const operationLogRoutes = require("./operationLogRoutes");
+const demoRoutes = require("./demoRoutes");
 
 // API路由
 router.use("/fsu/online", fsuOnlineRoutes);
 router.use("/alarm", alarmRoutes);
 router.use("/config", configRoutes);
 router.use("/heartbeat", heartbeatRoutes);
+router.use("/user", userRoutes);
+router.use("/logs", operationLogRoutes);
+router.use("/demo", demoRoutes);
 
 // 根路由
 router.get("/", (req, res) => {

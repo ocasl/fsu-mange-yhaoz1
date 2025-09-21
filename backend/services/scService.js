@@ -7,6 +7,7 @@ const {
 } = require("../utils/xmlBuilder");
 const logger = require("../utils/logger");
 const FSULogAnalyzer = require("../utils/fsuLogAnalyzer");
+const ScipRecord = require("../models/ScipRecord");
 
 // 创建全局日志分析器实例
 const fsuLogAnalyzer = new FSULogAnalyzer();
@@ -270,6 +271,69 @@ const sendDirectLogin = async (fsuData) => {
                 logger.info(`SC服务器响应内容:`, {
                   decodedResponse: returnContent,
                   headers: response.headers,
+                });
+
+                // 异步提取并保存SCIP信息（不阻塞主流程）
+                setImmediate(() => {
+                  try {
+                    const scipMatch = returnContent.match(
+                      /<SCIP>([^<]+)<\/SCIP>/
+                    );
+                    const rightLevelMatch = returnContent.match(
+                      /<RightLevel>([^<]+)<\/RightLevel>/
+                    );
+
+                    if (
+                      scipMatch &&
+                      scipMatch[1] &&
+                      scipMatch[1].trim() !== ""
+                    ) {
+                      const scip = scipMatch[1].trim();
+                      const rightLevel = rightLevelMatch
+                        ? rightLevelMatch[1].trim()
+                        : "";
+
+                      logger.info(`🎯 从LOGIN_ACK响应中提取到SCIP: ${scip}`, {
+                        fsuId: fsuData.fsuId,
+                        scip,
+                        rightLevel,
+                      });
+
+                      // 异步存储SCIP记录
+                      ScipRecord.recordScip(
+                        fsuData.fsuId,
+                        scip,
+                        rightLevel,
+                        returnContent,
+                        "register"
+                      )
+                        .then((scipRecord) => {
+                          logger.info(`✅ SCIP记录保存成功`, {
+                            fsuId: fsuData.fsuId,
+                            scip,
+                            recordId: scipRecord._id,
+                          });
+                        })
+                        .catch((error) => {
+                          logger.error(
+                            `❌ SCIP记录保存失败: ${error.message}`,
+                            {
+                              fsuId: fsuData.fsuId,
+                              scip,
+                              error: error.message,
+                            }
+                          );
+                        });
+                    }
+                  } catch (scipError) {
+                    logger.error(
+                      `❌ 提取SCIP信息时发生错误: ${scipError.message}`,
+                      {
+                        fsuId: fsuData.fsuId,
+                        error: scipError.message,
+                      }
+                    );
+                  }
                 });
 
                 // 记录成功日志

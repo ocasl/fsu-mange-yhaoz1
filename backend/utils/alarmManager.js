@@ -172,13 +172,22 @@ class AlarmManager {
     } = alarmData;
 
     // 转换告警级别为数字（与SEND_ALARM保持一致）
-    const alarmLevelMap = {
-      一级: "1",
-      二级: "2",
-      三级: "3",
-      四级: "4",
-    };
-    const numericAlarmLevel = alarmLevelMap[alarmLevel] || "2";
+    let numericAlarmLevel = "";
+    if (alarmLevel) {
+      // 如果已经是数字字符串，直接使用
+      if (/^[1-4]$/.test(alarmLevel)) {
+        numericAlarmLevel = alarmLevel;
+      } else {
+        // 如果是中文描述，进行转换
+        const alarmLevelMap = {
+          一级: "1",
+          二级: "2",
+          三级: "3",
+          四级: "4",
+        };
+        numericAlarmLevel = alarmLevelMap[alarmLevel] || "2";
+      }
+    }
 
     // 转换告警标志为英文（与SEND_ALARM保持一致）
     const alarmFlagMap = {
@@ -223,15 +232,21 @@ class AlarmManager {
     } = alarmData;
 
     // 转换告警级别为数字（如果提供了级别）
-    let numericAlarmLevel = null;
+    let numericAlarmLevel = "";
     if (alarmLevel) {
-      const alarmLevelMap = {
-        一级: "1",
-        二级: "2",
-        三级: "3",
-        四级: "4",
-      };
-      numericAlarmLevel = alarmLevelMap[alarmLevel] || "2";
+      // 如果已经是数字字符串，直接使用
+      if (/^[1-4]$/.test(alarmLevel)) {
+        numericAlarmLevel = alarmLevel;
+      } else {
+        // 如果是中文描述，进行转换
+        const alarmLevelMap = {
+          一级: "1",
+          二级: "2",
+          三级: "3",
+          四级: "4",
+        };
+        numericAlarmLevel = alarmLevelMap[alarmLevel] || alarmLevel;
+      }
     }
 
     // 转换告警标志为英文
@@ -674,6 +689,95 @@ class AlarmManager {
         result.message += ` - SC发送失败: ${sendResult.message}`;
         logger.warn("告警清除发送到SC服务器失败", {
           serialNo: activeAlarm.serialNo,
+          deviceId,
+          method: sendMethod,
+          error: sendResult.message,
+        });
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * 从数据库记录清除告警（不依赖活跃告警列表）
+   * @param {Object} alarmRecord - 数据库中的告警记录
+   * @param {boolean} sendToSC - 是否发送到SC服务器
+   * @param {string} sendMethod - 发送方式
+   * @returns {Object} 清除告警信息和XML
+   */
+  async clearAlarmFromRecord(
+    alarmRecord,
+    sendToSC = false,
+    sendMethod = "soap"
+  ) {
+    const { deviceId, fsuid, signalId, alarmDesc, serialNo } = alarmRecord;
+
+    // 使用数据库记录中的序号，如果没有则生成新的
+    const useSerialNo = serialNo || this.generateAlarmSerialNo();
+
+    // 构造清除告警数据
+    const alarmData = {
+      serialNo: useSerialNo,
+      deviceId,
+      alarmTime: this.getCurrentTimestamp(),
+      fsuId: fsuid,
+      monitorPointId: signalId,
+      alarmLevel: "4", // 清除时使用4级告警
+      alarmFlag: "结束",
+      alarmDesc: `${alarmDesc}(已清除)`,
+    };
+
+    // 生成完整的SEND_ALARM清除请求报文
+    const sendAlarmRequest = this.generateSendAlarmRequest(alarmData);
+
+    // 也生成单独的TAlarm XML（用于显示）
+    const alarmXml = this.generateAlarmXML(alarmData);
+
+    logger.info("生成告警清除（从数据库记录）", {
+      serialNo: useSerialNo,
+      deviceId,
+      monitorPointId: signalId,
+      originalDesc: alarmDesc,
+    });
+
+    const result = {
+      success: true,
+      alarmData,
+      alarmXml, // 单独的TAlarm格式
+      sendAlarmRequest, // 完整的SEND_ALARM请求报文
+      message: `告警清除成功 - 序号: ${useSerialNo}`,
+    };
+
+    // 如果需要发送到SC服务器
+    if (sendToSC) {
+      logger.info("发送告警清除到SC服务器（从数据库记录）", {
+        serialNo: useSerialNo,
+        deviceId,
+        method: sendMethod,
+      });
+
+      let sendResult;
+      if (sendMethod === "all") {
+        // 尝试所有发送方式
+        sendResult = await this.sendAlarmMultipleMethods(sendAlarmRequest);
+      } else {
+        // 使用指定的发送方式
+        sendResult = await this.sendAlarmToSC(sendAlarmRequest, sendMethod);
+      }
+
+      result.sendResult = sendResult;
+      if (sendResult.success) {
+        result.message += " - 已发送到SC服务器";
+        logger.info("告警清除发送到SC服务器成功（从数据库记录）", {
+          serialNo: useSerialNo,
+          deviceId,
+          method: sendMethod,
+        });
+      } else {
+        result.message += ` - SC发送失败: ${sendResult.message}`;
+        logger.warn("告警清除发送到SC服务器失败（从数据库记录）", {
+          serialNo: useSerialNo,
           deviceId,
           method: sendMethod,
           error: sendResult.message,

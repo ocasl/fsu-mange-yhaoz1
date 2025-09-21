@@ -1,15 +1,18 @@
 const AlarmRecord = require("../models/AlarmRecord");
+const ScipRecord = require("../models/ScipRecord");
 const logger = require("../utils/logger");
-const { reportAlarm, clearAlarm } = require("../utils/alarmManager");
+const AlarmManager = require("../utils/alarmManager");
+
+// 创建告警管理器实例
+const alarmManager = new AlarmManager();
 
 /**
  * @desc    获取告警记录列表
- * @route   GET /api/alarm/:type/list
+ * @route   GET /api/alarm/report/list
  * @access  Public
  */
 exports.getAlarmList = async (req, res) => {
   try {
-    const { type } = req.params;
     const {
       page = 1,
       pageSize = 10,
@@ -20,17 +23,14 @@ exports.getAlarmList = async (req, res) => {
       creator,
     } = req.query;
 
-    // 验证类型
-    if (type !== "report" && type !== "clear") {
-      return res.status(400).json({
-        success: false,
-        message: "无效的告警类型",
-        error: "INVALID_TYPE",
-      });
+    // 构建查询条件（只查询report类型的记录）
+    const query = { type: "report" };
+
+    // 权限控制：子账号只能看到自己创建的告警记录
+    if (req.user && !req.user.isAdmin()) {
+      query.creator = req.user.username;
     }
 
-    // 构建查询条件
-    const query = { type };
     if (fsuid) query.fsuid = { $regex: fsuid, $options: "i" };
     if (signalId) query.signalId = { $regex: signalId, $options: "i" };
     if (alarmDesc) query.alarmDesc = { $regex: alarmDesc, $options: "i" };
@@ -95,16 +95,19 @@ exports.reportAlarmHandler = async (req, res) => {
       });
     }
 
-    // 2. 调用告警管理器上报告警
+    // 2. 设置采集机IP并调用告警管理器上报告警
     const startTime = Date.now();
-    const result = await reportAlarm(
+
+    // 设置采集机IP
+    alarmManager.setCollectorIP(alarmData.collectorIp);
+
+    const result = await alarmManager.reportAlarm(
       {
         deviceId: alarmData.deviceId,
         fsuId: alarmData.fsuid,
         monitorPointId: alarmData.signalId,
         alarmLevel: alarmData.alarmLevel || "",
         alarmDesc: alarmData.alarmDesc,
-        collectorIp: alarmData.collectorIp,
       },
       true,
       "soap"
@@ -124,7 +127,7 @@ exports.reportAlarmHandler = async (req, res) => {
       status: result.success ? "success" : "failed",
       responseCode: result.responseCode || "",
       responseMessage: result.message || "",
-      creator: alarmData.creator || "system",
+      creator: req.user ? req.user.username : alarmData.creator || "system",
       reportTime: new Date(),
     });
 
@@ -146,83 +149,7 @@ exports.reportAlarmHandler = async (req, res) => {
 };
 
 /**
- * @desc    清除告警
- * @route   POST /api/alarm/clear
- * @access  Public
- */
-exports.clearAlarmHandler = async (req, res) => {
-  try {
-    const alarmData = req.body;
-    const clientIp = req.ip || req.connection.remoteAddress;
-
-    logger.info(`收到告警清除请求，客户端IP: ${clientIp}`, { alarmData });
-
-    // 1. 参数校验
-    if (
-      !alarmData.fsuid ||
-      !alarmData.signalId ||
-      !alarmData.alarmDesc ||
-      !alarmData.deviceId ||
-      !alarmData.collectorIp
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "缺少必要参数",
-        error: "VALIDATION_ERROR",
-      });
-    }
-
-    // 2. 调用告警管理器清除告警
-    const startTime = Date.now();
-    const result = await clearAlarm(
-      {
-        deviceId: alarmData.deviceId,
-        fsuId: alarmData.fsuid,
-        monitorPointId: alarmData.signalId,
-        alarmDesc: alarmData.alarmDesc,
-        collectorIp: alarmData.collectorIp,
-      },
-      true,
-      "soap"
-    );
-
-    const duration = Date.now() - startTime;
-
-    // 3. 创建告警记录
-    const alarmRecord = await AlarmRecord.create({
-      type: "clear",
-      fsuid: alarmData.fsuid,
-      signalId: alarmData.signalId,
-      alarmDesc: alarmData.alarmDesc,
-      deviceId: alarmData.deviceId,
-      collectorIp: alarmData.collectorIp,
-      serialNo: result.alarmData?.serialNo,
-      status: result.success ? "success" : "failed",
-      responseCode: result.responseCode || "",
-      responseMessage: result.message || "",
-      creator: alarmData.creator || "system",
-      reportTime: new Date(),
-    });
-
-    // 4. 返回结果
-    res.status(201).json({
-      success: result.success,
-      data: alarmRecord,
-      message: result.message,
-      processTime: duration,
-    });
-  } catch (error) {
-    logger.error(`清除告警失败: ${error.message}`, { error });
-    res.status(500).json({
-      success: false,
-      message: "清除告警失败",
-      error: error.message,
-    });
-  }
-};
-
-/**
- * @desc    删除告警记录
+ * @desc    删除告警记录（同时向SC服务器发送清除告警报文）
  * @route   DELETE /api/alarm/:id
  * @access  Public
  */
@@ -230,8 +157,8 @@ exports.deleteAlarmRecord = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // 查找并删除
-    const alarmRecord = await AlarmRecord.findByIdAndDelete(id);
+    // 先查找告警记录（不删除）
+    const alarmRecord = await AlarmRecord.findById(id);
 
     // 检查是否存在
     if (!alarmRecord) {
@@ -242,11 +169,79 @@ exports.deleteAlarmRecord = async (req, res) => {
       });
     }
 
+    logger.info(`开始删除告警记录并发送清除报文`, {
+      recordId: id,
+      fsuid: alarmRecord.fsuid,
+      signalId: alarmRecord.signalId,
+      deviceId: alarmRecord.deviceId,
+    });
+
+    let clearResult = null;
+    let clearSuccess = false;
+
+    // 如果有采集机IP，尝试向SC服务器发送清除告警报文
+    if (alarmRecord.collectorIp) {
+      try {
+        // 设置采集机IP
+        alarmManager.setCollectorIP(alarmRecord.collectorIp);
+
+        // 发送清除告警报文（使用数据库记录）
+        clearResult = await alarmManager.clearAlarmFromRecord(
+          alarmRecord,
+          true,
+          "soap"
+        );
+
+        clearSuccess = clearResult.success;
+
+        if (clearSuccess) {
+          logger.info(`✅ 成功向SC服务器发送清除告警报文`, {
+            recordId: id,
+            serialNo: clearResult.alarmData?.serialNo,
+          });
+        } else {
+          logger.warn(`⚠️ 向SC服务器发送清除告警报文失败`, {
+            recordId: id,
+            error: clearResult.message,
+          });
+        }
+      } catch (scError) {
+        logger.error(`❌ 发送清除告警报文异常`, {
+          recordId: id,
+          error: scError.message,
+        });
+      }
+    } else {
+      logger.warn(`⚠️ 告警记录缺少采集机IP，无法发送清除报文`, {
+        recordId: id,
+      });
+    }
+
+    // 无论SC清除是否成功，都删除本地记录
+    await AlarmRecord.findByIdAndDelete(id);
+
+    // 构造响应消息
+    let message = "告警记录删除成功";
+    if (alarmRecord.collectorIp) {
+      if (clearSuccess) {
+        message += "，已向SC服务器发送清除告警报文";
+      } else {
+        message += "，但向SC服务器发送清除告警报文失败";
+      }
+    } else {
+      message += "，但由于缺少采集机IP，未发送清除告警报文";
+    }
+
     // 返回结果
     res.json({
       success: true,
-      data: {},
-      message: "删除告警记录成功",
+      data: {
+        deleted: true,
+        scClearSent: !!alarmRecord.collectorIp,
+        scClearSuccess: clearSuccess,
+        clearResult: clearResult,
+      },
+      message: message,
     });
   } catch (error) {
     logger.error(`删除告警记录失败: ${error.message}`, { error });
@@ -295,15 +290,51 @@ exports.getAlarmDetail = async (req, res) => {
 };
 
 /**
- * @desc    从日志中获取最新的SCIP
+ * @desc    获取最新的SCIP（优先从数据库，其次从日志）
  * @route   GET /api/alarm/scip
  * @access  Public
  */
 exports.getScipFromLogs = async (req, res) => {
   try {
+    const { fsuId } = req.query; // 支持按FSU ID查询
     const fs = require("fs").promises;
     const path = require("path");
 
+    logger.info("开始查找SCIP信息", { fsuId });
+
+    // 1. 优先从数据库中查找SCIP记录
+    if (fsuId) {
+      try {
+        const scipRecord = await ScipRecord.getLatestScip(fsuId);
+        if (scipRecord) {
+          logger.info(`✅ 从数据库中找到SCIP记录`, {
+            fsuId,
+            scip: scipRecord.scip,
+            registerTime: scipRecord.registerTime,
+          });
+
+          return res.json({
+            success: true,
+            message: "成功从数据库中获取到SCIP",
+            data: {
+              scip: scipRecord.scip,
+              source: `数据库记录 (${scipRecord.source})`,
+              timestamp: scipRecord.registerTime,
+              rightLevel: scipRecord.rightLevel,
+              fsuId: scipRecord.fsuId,
+            },
+          });
+        } else {
+          logger.info(`数据库中未找到FSU ${fsuId}的SCIP记录，尝试从日志中查找`);
+        }
+      } catch (dbError) {
+        logger.warn(
+          `查询数据库SCIP记录失败: ${dbError.message}，尝试从日志中查找`
+        );
+      }
+    }
+
+    // 2. 如果数据库中没有找到，则从日志中查找
     logger.info("开始从日志中查找SCIP信息");
 
     // 查找最新的日志文件

@@ -678,6 +678,23 @@ const FsuOnlineManagement = () => {
         <Text type="secondary">管理和监控FSU设备的上线状态</Text>
       </div>
 
+      {/* 权限提示 */}
+      <Alert
+        message={
+          JSON.parse(localStorage.getItem("user") || "{}")?.role === "admin"
+            ? "总账号权限：您可以查看所有用户创建的FSU上线记录"
+            : "子账号权限：您只能查看自己创建的FSU上线记录"
+        }
+        type={
+          JSON.parse(localStorage.getItem("user") || "{}")?.role === "admin"
+            ? "success"
+            : "info"
+        }
+        showIcon
+        style={{ marginBottom: 24 }}
+        closable
+      />
+
       {/* 搜索筛选区域 */}
       <Card title="查询筛选" style={{ marginBottom: 24 }}>
         <Form form={searchForm} layout="inline" style={{ marginBottom: 16 }}>

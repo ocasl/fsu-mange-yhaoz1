@@ -44,6 +44,11 @@ exports.getFsuOnlineList = async (req, res) => {
 
     // 构建查询条件
     const query = {};
+
+    // 权限控制：子账号只能看到自己创建的FSU记录
+    if (req.user && !req.user.isAdmin()) {
+      query.creator = req.user.username;
+    }
     if (fsuid) query.fsuid = { $regex: fsuid, $options: "i" };
     if (siteName) query.siteName = { $regex: siteName, $options: "i" };
     if (softwareVendor)
@@ -153,8 +158,12 @@ exports.addFsuOnline = async (req, res) => {
       });
     }
 
-    // 3. 创建FSU上线记录
-    const fsuOnline = await FsuOnline.create(fsuData);
+    // 3. 创建FSU上线记录 - 添加创建者信息
+    const fsuDataWithCreator = {
+      ...fsuData,
+      creator: req.user ? req.user.username : "anonymous",
+    };
+    const fsuOnline = await FsuOnline.create(fsuDataWithCreator);
 
     // 4. 启动WebService服务器和LOGIN注册
     try {

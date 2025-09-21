@@ -13,6 +13,12 @@ const api = axios.create({
 // 请求拦截器
 api.interceptors.request.use(
   (config) => {
+    // 添加认证token
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
     // 在发送请求之前做些什么
     console.log(
       `发送请求: ${config.method?.toUpperCase()} ${config.url}`,
@@ -43,7 +49,22 @@ api.interceptors.response.use(
     if (error.response) {
       // 服务器响应了错误状态码
       const { status, data } = error.response;
-      errorMessage = data?.message || `服务器错误 (${status})`;
+
+      // 处理认证相关错误
+      if (status === 401) {
+        // 清除本地存储的认证信息
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+
+        // 如果不是登录页面，跳转到登录页面
+        if (!window.location.pathname.includes("/login")) {
+          window.location.reload(); // 刷新页面回到登录状态
+        }
+
+        errorMessage = data?.message || "登录已过期，请重新登录";
+      } else {
+        errorMessage = data?.message || `服务器错误 (${status})`;
+      }
     } else if (error.request) {
       // 请求已发送但没有收到响应
       errorMessage = "服务器无响应，请检查网络连接";
@@ -52,8 +73,15 @@ api.interceptors.response.use(
       errorMessage = error.message || "请求配置错误";
     }
 
-    // 显示错误提示
-    message.error(errorMessage);
+    // 显示错误提示（登录页面不显示401错误）
+    if (
+      !(
+        error.response?.status === 401 &&
+        window.location.pathname.includes("/login")
+      )
+    ) {
+      message.error(errorMessage);
+    }
 
     return Promise.reject(error);
   }
@@ -103,14 +131,11 @@ export const fsuApi = {
   getFsuTypeList: () => api.get("/fsu/types"),
 
   // 告警管理相关接口
-  // 获取告警列表 (通用接口，支持report和clear类型)
-  getAlarmList: (type, params) => api.get(`/alarm/${type}/list`, { params }),
+  // 获取告警列表
+  getAlarmList: (params) => api.get("/alarm/report/list", { params }),
 
   // 上报告警
   reportAlarm: (data) => api.post("/alarm/report", data),
-
-  // 清除告警
-  clearAlarm: (data) => api.post("/alarm/clear", data),
 
   // 删除告警记录
   deleteAlarmRecord: (id) => api.delete(`/alarm/${id}`),
@@ -119,7 +144,8 @@ export const fsuApi = {
   getAlarmDetail: (id) => api.get(`/alarm/${id}`),
 
   // 从日志中获取SCIP
-  getScipFromLogs: () => api.get("/alarm/scip"),
+  getScipFromLogs: (fsuId) =>
+    api.get("/alarm/scip", { params: fsuId ? { fsuId } : {} }),
 
   // FSU配置管理相关接口
   // 获取所有配置

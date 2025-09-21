@@ -33,15 +33,21 @@ import {
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
 
-const AdminLayout = ({ children, currentPage = "fsu-online", onMenuClick }) => {
+const AdminLayout = ({
+  children,
+  currentPage = "fsu-online",
+  onMenuClick,
+  currentUser,
+  onLogout,
+}) => {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuVisible, setMobileMenuVisible] = useState(false);
   const {
     token: { colorBgContainer },
   } = theme.useToken();
 
-  // 菜单项配置
-  const menuItems = [
+  // 菜单项配置 - 根据用户角色过滤
+  const baseMenuItems = [
     {
       key: "dashboard",
       icon: <DashboardOutlined />,
@@ -65,33 +71,30 @@ const AdminLayout = ({ children, currentPage = "fsu-online", onMenuClick }) => {
       ],
     },
     {
-      key: "alarm-management",
+      key: "alarm-report",
       icon: <BellOutlined />,
       label: "告警管理",
-      children: [
-        {
-          key: "alarm-report",
-          icon: <BellOutlined />,
-          label: "上报告警",
-        },
-        {
-          key: "alarm-clear",
-          icon: <BellOutlined />,
-          label: "清除告警",
-        },
-      ],
     },
     {
-      key: "log-management",
+      key: "operation-logs",
       icon: <FileTextOutlined />,
-      label: "日志管理",
+      label: "操作记录",
     },
+  ];
+
+  // 添加管理员专用菜单
+  const adminMenuItems = [
     {
       key: "user-management",
       icon: <TeamOutlined />,
       label: "用户管理",
     },
   ];
+
+  const menuItems =
+    currentUser?.role === "admin"
+      ? [...baseMenuItems, ...adminMenuItems]
+      : baseMenuItems;
 
   // 用户下拉菜单
   const userMenuItems = [
@@ -120,9 +123,9 @@ const AdminLayout = ({ children, currentPage = "fsu-online", onMenuClick }) => {
   const breadcrumbMap = {
     dashboard: ["首页"],
     "fsu-online": ["首页", "FSU管理", "FSU上线"],
-    "alarm-report": ["首页", "告警管理", "上报告警"],
-    "alarm-clear": ["首页", "告警管理", "清除告警"],
-    "log-management": ["首页", "日志管理"],
+    "fsu-config": ["首页", "FSU管理", "配置管理"],
+    "alarm-report": ["首页", "告警管理"],
+    "operation-logs": ["首页", "操作记录"],
     "user-management": ["首页", "用户管理"],
   };
 
@@ -136,7 +139,9 @@ const AdminLayout = ({ children, currentPage = "fsu-online", onMenuClick }) => {
   const handleUserMenuClick = ({ key }) => {
     switch (key) {
       case "logout":
-        console.log("用户退出登录");
+        if (onLogout) {
+          onLogout();
+        }
         break;
       case "profile":
         console.log("打开个人中心");
@@ -161,7 +166,7 @@ const AdminLayout = ({ children, currentPage = "fsu-online", onMenuClick }) => {
       <Menu
         mode="inline"
         selectedKeys={[currentPage]}
-        defaultOpenKeys={["fsu-management", "alarm-management"]}
+        defaultOpenKeys={["fsu-management"]}
         items={menuItems}
         onClick={handleMenuClick}
         style={{ border: 0 }}
@@ -221,7 +226,7 @@ const AdminLayout = ({ children, currentPage = "fsu-online", onMenuClick }) => {
           theme="dark"
           mode="inline"
           selectedKeys={[currentPage]}
-          defaultOpenKeys={["fsu-management", "alarm-management"]}
+          defaultOpenKeys={["fsu-management"]}
           items={menuItems}
           onClick={handleMenuClick}
           style={{ border: 0 }}
@@ -332,9 +337,29 @@ const AdminLayout = ({ children, currentPage = "fsu-online", onMenuClick }) => {
                   <Avatar
                     size="small"
                     icon={<UserOutlined />}
-                    style={{ marginRight: 8 }}
+                    style={{
+                      marginRight: 8,
+                      backgroundColor:
+                        currentUser?.role === "admin" ? "#f56a00" : "#1890ff",
+                    }}
                   />
-                  <Text>管理员</Text>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "flex-start",
+                    }}
+                  >
+                    <Text style={{ fontSize: 14 }}>
+                      {currentUser?.realName || currentUser?.username || "用户"}
+                    </Text>
+                    <Text
+                      type="secondary"
+                      style={{ fontSize: 12, lineHeight: 1 }}
+                    >
+                      {currentUser?.role === "admin" ? "总账号" : "子账号"}
+                    </Text>
+                  </div>
                 </div>
               </Dropdown>
             </Space>

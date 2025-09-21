@@ -8,7 +8,9 @@
     "dev": "nodemon start.js",
     "logs": "node log-viewer.js watch",
     "logs:tail": "node log-viewer.js tail",
-    "logs:clear": "node log-viewer.js clear"
+    "logs:clear": "node log-viewer.js clear",
+    "init-admin": "node scripts/init-admin.js",
+    "create-test-users": "node scripts/create-test-users.js"
   },
   "dependencies": {
     "axios": "^1.6.0",
