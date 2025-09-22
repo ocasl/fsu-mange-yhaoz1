@@ -117,6 +117,10 @@ export const fsuApi = {
   // 更新FSU上线记录
   updateFsuOnline: (id, data) => api.put(`/fsu/online/${id}`, data),
 
+  // 更新FSU上线状态（上线/下线切换）
+  updateFsuOnlineStatus: (id, data) =>
+    api.patch(`/fsu/online/${id}/status`, data),
+
   // 删除FSU上线记录
   deleteFsuOnline: (id) => api.delete(`/fsu/online/${id}`),
 

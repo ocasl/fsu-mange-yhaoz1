@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const fsuOnlineRoutes = require("./fsuOnlineRoutes");
+const fsuRecoveryRoutes = require("./fsuRecoveryRoutes");
 const alarmRoutes = require("./alarmRoutes");
 const configRoutes = require("./configRoutes");
 const heartbeatRoutes = require("./heartbeatRoutes");
@@ -10,6 +11,7 @@ const demoRoutes = require("./demoRoutes");
 
 // API路由
 router.use("/fsu/online", fsuOnlineRoutes);
+router.use("/fsu/recovery", fsuRecoveryRoutes);
 router.use("/alarm", alarmRoutes);
 router.use("/config", configRoutes);
 router.use("/heartbeat", heartbeatRoutes);

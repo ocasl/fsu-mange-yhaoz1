@@ -9,6 +9,7 @@ const bodyParser = require("body-parser");
 const { EventEmitter } = require("events");
 const logger = require("../utils/logger");
 const deviceDataManager = require("../utils/deviceDataManager");
+const networkDiagnostics = require("../utils/networkDiagnostics");
 
 class FSUWebServiceServer extends EventEmitter {
   constructor() {
@@ -18,6 +19,9 @@ class FSUWebServiceServer extends EventEmitter {
     this.isRunning = false;
     this.fsuData = null;
     this.fsuDevices = new Map(); // 存储多个FSU设备信息
+    this.serverStartTime = null;
+    // 心跳响应模式配置
+    this.heartbeatMode = "strict"; // 'strict' 或 'compatible'
     this.setupMiddleware();
     this.setupRoutes();
 
@@ -383,7 +387,7 @@ class FSUWebServiceServer extends EventEmitter {
       });
 
       console.log("❌ 未找到请求的FSU设备");
-      console.log("💡 提示: 请确保已通过addFsuDevice()方法注册该设备");
+      console.log("💡 设备已下线，不响应心跳请求");
 
       heartbeatData.success = false;
       heartbeatData.error = "未找到FSU设备";
@@ -391,26 +395,60 @@ class FSUWebServiceServer extends EventEmitter {
       // 发出心跳事件
       this.emit("heartbeat", heartbeatData);
 
-      // 返回失败响应，但使用请求的FsuId
-      const responseXml = this.buildGetFsuInfoResponse(requestData.fsuId, 0);
+      // 根据心跳模式决定响应方式
+      if (this.heartbeatMode === "strict") {
+        // 严格模式：设备下线就不响应
+        logger.info("=== 严格模式：设备未找到，不响应心跳请求 ===", {
+          timestamp: new Date().toLocaleString(),
+          requestFsuId: requestData.fsuId,
+          reason: "设备已下线或未注册",
+          action: "返回404不响应",
+          mode: "strict",
+        });
 
-      logger.warn("=== 发送GET_FSUINFO_ACK响应(设备未找到) ===", {
-        timestamp: new Date().toLocaleString(),
-        responseType: "GET_FSUINFO_ACK",
-        responseCode: "1702",
-        result: 0,
-        reason: "FSU设备未找到",
-        requestFsuId: requestData.fsuId,
-        responseXml: responseXml,
-      });
+        console.log("\n🚫 [严格模式-不响应] " + new Date().toLocaleString());
+        console.log("📍 请求的FSU ID:", requestData.fsuId);
+        console.log("📋 当前在线设备:", Array.from(this.fsuDevices.keys()));
+        console.log("💡 逻辑: 设备下线就不应该响应心跳");
+        console.log("🔧 模式: 严格模式 (FSU_HEARTBEAT_MODE=strict)");
+        console.log("─".repeat(80));
 
-      console.log("\n❌ [心跳响应-设备未找到] " + new Date().toLocaleString());
-      console.log("📄 响应XML:");
-      console.log(this.formatXmlForConsole(responseXml));
-      console.log("─".repeat(80));
+        // 返回404表示设备不存在/已下线
+        res.status(404).json({
+          error: "FSU设备未找到或已下线",
+          requestFsuId: requestData.fsuId,
+          availableDevices: Array.from(this.fsuDevices.keys()),
+          timestamp: new Date().toISOString(),
+        });
+        return;
+      } else {
+        // 兼容模式：返回失败响应
+        const responseXml = this.buildGetFsuInfoResponse(requestData.fsuId, 0);
 
-      this.sendSoapResponse(res, responseXml);
-      return;
+        logger.warn("=== 兼容模式：发送GET_FSUINFO_ACK响应(设备未找到) ===", {
+          timestamp: new Date().toLocaleString(),
+          responseType: "GET_FSUINFO_ACK",
+          responseCode: "1702",
+          result: 0,
+          reason: "FSU设备未找到",
+          requestFsuId: requestData.fsuId,
+          responseXml: responseXml,
+          mode: "compatible",
+        });
+
+        console.log(
+          "\n⚠️ [兼容模式-返回失败响应] " + new Date().toLocaleString()
+        );
+        console.log("📍 请求的FSU ID:", requestData.fsuId);
+        console.log("📋 当前在线设备:", Array.from(this.fsuDevices.keys()));
+        console.log("🔧 模式: 兼容模式 (FSU_HEARTBEAT_MODE=compatible)");
+        console.log("📄 响应XML:");
+        console.log(this.formatXmlForConsole(responseXml));
+        console.log("─".repeat(80));
+
+        this.sendSoapResponse(res, responseXml);
+        return;
+      }
     }
 
     // 找到对应的FSU设备，返回成功响应
@@ -860,18 +898,36 @@ class FSUWebServiceServer extends EventEmitter {
   }
 
   /**
-   * 启动WebService服务器
+   * 启动WebService服务器 - 改进版本，支持多FSU设备管理
    */
-  start(fsuData, port = 8080, bindAddress = null) {
+  async start(fsuData = null, port = 8080, bindAddress = null) {
     if (this.isRunning) {
-      logger.warn("FSU WebService服务器已在运行");
-      return false;
+      logger.info("FSU WebService服务器已在运行，添加FSU设备到现有服务器");
+      if (fsuData) {
+        this.addFsuDevice(fsuData);
+      }
+      return Promise.resolve(true);
     }
 
-    // 标准化fsuData，确保同时有fsuid和fsuId
-    this.fsuData = fsuData;
+    // 执行网络诊断
+    console.log("\n🔍 [启动诊断] 检查网络环境...");
+    const diagnostic =
+      await networkDiagnostics.performComprehensiveDiagnostic();
+
+    // 如果检测到代理，创建无代理环境用于WebService
+    let proxyFreeEnv = null;
+    if (
+      diagnostic.proxy.systemProxy?.enabled ||
+      diagnostic.proxy.processProxy?.detected
+    ) {
+      console.log("🔧 [代理检测] 为WebService创建无代理环境...");
+      proxyFreeEnv = networkDiagnostics.createProxyFreeEnvironment();
+    }
+
+    // 如果提供了fsuData，添加到设备列表
     if (fsuData) {
-      // 确保同时有fsuid和fsuId两种形式
+      // 标准化fsuData，确保同时有fsuid和fsuId
+      this.fsuData = fsuData;
       if (fsuData.fsuid && !fsuData.fsuId) {
         this.fsuData.fsuId = fsuData.fsuid;
       } else if (fsuData.fsuId && !fsuData.fsuid) {
@@ -898,12 +954,30 @@ class FSUWebServiceServer extends EventEmitter {
         }
 
         this.isRunning = true;
+        this.serverStartTime = new Date();
+
         logger.info("FSU WebService服务器已启动", {
-          fsuId: fsuData.fsuId || fsuData.fsuid, // 兼容大小写
           port: port,
           address: `http://${finalBindAddress}:${port}`,
           bindAddress: finalBindAddress,
+          registeredDevices: this.fsuDevices.size,
+          deviceList: Array.from(this.fsuDevices.keys()),
+          heartbeatMode: this.heartbeatMode,
         });
+
+        console.log(
+          `\n🎯 [心跳模式] ${
+            this.heartbeatMode === "strict" ? "严格模式" : "兼容模式"
+          }`
+        );
+        if (this.heartbeatMode === "strict") {
+          console.log("💡 严格模式: 未注册设备的心跳请求将返回404");
+        } else {
+          console.log("💡 兼容模式: 未注册设备的心跳请求将返回失败响应");
+        }
+        console.log(
+          "🔧 切换模式: 设置环境变量 FSU_HEARTBEAT_MODE=strict|compatible"
+        );
 
         resolve(true);
       });
@@ -911,10 +985,19 @@ class FSUWebServiceServer extends EventEmitter {
   }
 
   /**
-   * 停止WebService服务器
+   * 停止WebService服务器 - 只有在没有FSU设备时才真正停止
    */
-  stop() {
+  stop(forceStop = false) {
     if (!this.isRunning || !this.server) {
+      return Promise.resolve();
+    }
+
+    // 如果还有FSU设备在线且不是强制停止，则不停止服务器
+    if (!forceStop && this.fsuDevices.size > 0) {
+      logger.info("WebService服务器保持运行，仍有FSU设备在线", {
+        deviceCount: this.fsuDevices.size,
+        devices: Array.from(this.fsuDevices.keys()),
+      });
       return Promise.resolve();
     }
 
@@ -922,7 +1005,10 @@ class FSUWebServiceServer extends EventEmitter {
       this.server.close(() => {
         this.isRunning = false;
         this.server = null;
-        logger.info("FSU WebService服务器已停止");
+        this.serverStartTime = null;
+        logger.info("FSU WebService服务器已停止", {
+          reason: forceStop ? "强制停止" : "无设备在线",
+        });
         resolve();
       });
     });
@@ -934,9 +1020,35 @@ class FSUWebServiceServer extends EventEmitter {
   getStatus() {
     return {
       isRunning: this.isRunning,
-      fsuId: this.fsuData?.fsuId,
       port: this.server?.address()?.port,
+      serverStartTime: this.serverStartTime,
+      registeredDevices: this.fsuDevices.size,
+      deviceList: Array.from(this.fsuDevices.keys()),
+      uptime: this.serverStartTime
+        ? Date.now() - this.serverStartTime.getTime()
+        : 0,
     };
+  }
+
+  /**
+   * 强制停止WebService服务器（用于系统关闭）
+   */
+  forceStop() {
+    return this.stop(true);
+  }
+
+  /**
+   * 检查是否有设备在线
+   */
+  hasOnlineDevices() {
+    return this.fsuDevices.size > 0;
+  }
+
+  /**
+   * 获取设备数量
+   */
+  getDeviceCount() {
+    return this.fsuDevices.size;
   }
 }
 

@@ -125,6 +125,29 @@ const server = app.listen(PORT, () => {
   // 初始化心跳管理器
   const heartbeatManager = require("./services/heartbeatManager");
   logger.info("心跳管理器初始化完成，等待FSU上线");
+
+  // 启动FSU设备恢复服务
+  const fsuRecoveryService = require("./services/fsuRecoveryService");
+  setTimeout(async () => {
+    try {
+      logger.info("🔄 启动FSU设备自动恢复流程...");
+      const recoveryResult = await fsuRecoveryService.startRecovery();
+
+      if (recoveryResult.success) {
+        logger.info("✅ FSU设备自动恢复完成", {
+          totalCount: recoveryResult.data.totalCount,
+          recoveredCount: recoveryResult.data.recoveredCount,
+          failureCount: recoveryResult.data.failureCount,
+        });
+      } else {
+        logger.warn("⚠️ FSU设备自动恢复失败", {
+          message: recoveryResult.message,
+        });
+      }
+    } catch (error) {
+      logger.error("FSU设备自动恢复异常", { error: error.message });
+    }
+  }, 3000); // 延迟3秒启动，确保数据库连接稳定
 });
 
 // 优雅关闭处理

@@ -13,6 +13,12 @@ router.put(
   fsuLogger,
   fsuOnlineController.updateFsuOnline
 );
+router.patch(
+  "/:id/status",
+  optionalAuth,
+  fsuLogger,
+  fsuOnlineController.updateFsuOnlineStatus
+);
 router.delete(
   "/:id",
   optionalAuth,

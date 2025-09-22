@@ -18,6 +18,7 @@ import {
   Typography,
   Alert,
   Badge,
+  Switch,
 } from "antd";
 import {
   PlusOutlined,
@@ -31,6 +32,9 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   SyncOutlined,
+  PoweroffOutlined,
+  PlayCircleOutlined,
+  PauseCircleOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { fsuApi, handleApiResponse, handleApiError } from "../services/api";
@@ -232,7 +236,43 @@ const FsuOnlineManagement = () => {
     form.setFieldsValue(record);
   };
 
-  // 删除FSU
+  // 切换FSU状态（上线/下线）
+  const handleToggleStatus = async (record) => {
+    try {
+      setLoading(true);
+      const newStatus = record.status === "online" ? "offline" : "online";
+
+      // 调用后端API切换状态
+      const response = await fsuApi.updateFsuOnlineStatus(record._id, {
+        status: newStatus,
+      });
+      const result = handleApiResponse(response);
+
+      message.success({
+        content: (
+          <div>
+            <p>
+              <strong>
+                {newStatus === "online" ? "🟢 设备上线成功" : "🔴 设备下线成功"}
+              </strong>
+            </p>
+            <p>FSU ID: {record.fsuid}</p>
+            <p>当前状态: {newStatus === "online" ? "在线" : "离线"}</p>
+          </div>
+        ),
+        duration: 3,
+      });
+
+      loadData();
+    } catch (error) {
+      const errorMsg = handleApiError(error);
+      message.error(`状态切换失败: ${errorMsg}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 删除FSU（真正删除记录）
   const handleDelete = async (id) => {
     try {
       setLoading(true);
@@ -244,11 +284,11 @@ const FsuOnlineManagement = () => {
         content: (
           <div>
             <p>
-              <strong>🟢 设备下线成功</strong>
+              <strong>🗑️ 记录删除成功</strong>
             </p>
             <p>FSU ID: {result.data?.fsuid || "Unknown"}</p>
             <p>下线方式: {result.data?.offlineMethod || "停止心跳服务"}</p>
-            <p>记录已删除，设备已断开连接</p>
+            <p>记录已永久删除，设备已断开连接</p>
           </div>
         ),
         duration: 5,
@@ -610,7 +650,7 @@ const FsuOnlineManagement = () => {
     {
       title: "操作",
       key: "action",
-      width: 160,
+      width: 200,
       fixed: "right",
       render: (_, record) => (
         <Space size="small">
@@ -622,27 +662,39 @@ const FsuOnlineManagement = () => {
               size="small"
             />
           </Tooltip>
-          <Tooltip title="删除记录并下线设备">
+
+          <Tooltip title={record.status === "online" ? "下线设备" : "上线设备"}>
+            <Switch
+              checked={record.status === "online"}
+              onChange={() => handleToggleStatus(record)}
+              checkedChildren={<PlayCircleOutlined />}
+              unCheckedChildren={<PauseCircleOutlined />}
+              loading={loading}
+              size="small"
+            />
+          </Tooltip>
+
+          <Tooltip title="永久删除记录">
             <Popconfirm
               title={
                 <div>
                   <p>
-                    <strong>⚠️ 设备下线警告</strong>
+                    <strong>⚠️ 永久删除警告</strong>
                   </p>
                   <p>删除此记录将会：</p>
                   <ul style={{ margin: "8px 0", paddingLeft: "20px" }}>
+                    <li>永久删除数据库记录</li>
                     <li>立即停止FSU客户端心跳服务</li>
-                    <li>关闭WebService服务器</li>
                     <li>设备将无法响应SC服务器请求</li>
                     <li>
                       <strong>设备将下线并断开连接</strong>
                     </li>
                   </ul>
-                  <p>确定要删除记录并下线设备吗？</p>
+                  <p>此操作不可恢复，确定要永久删除吗？</p>
                 </div>
               }
               onConfirm={() => handleDelete(record._id)}
-              okText="确定下线"
+              okText="确定删除"
               cancelText="取消"
               okType="danger"
             >
@@ -669,10 +721,10 @@ const FsuOnlineManagement = () => {
   };
 
   return (
-    <div style={{ padding: "24px", background: "#f0f2f5" }}>
+    <div style={{ padding: "16px", background: "#f0f2f5" }}>
       {/* 页面标题 */}
-      <div style={{ marginBottom: 24 }}>
-        <Title level={2} style={{ margin: 0 }}>
+      <div style={{ marginBottom: 16 }}>
+        <Title level={3} style={{ margin: 0, textAlign: "left" }}>
           <CloudServerOutlined style={{ color: "#1890ff", marginRight: 8 }} />
           FSU上线管理
         </Title>
@@ -692,116 +744,30 @@ const FsuOnlineManagement = () => {
             : "info"
         }
         showIcon
-        style={{ marginBottom: 24 }}
+        style={{ marginBottom: 16 }}
         closable
       />
 
       {/* 搜索筛选区域 */}
-      <Card title="查询筛选" style={{ marginBottom: 24 }}>
+      <Card title="查询筛选" style={{ marginBottom: 16 }}>
         <Form form={searchForm} layout="inline" style={{ marginBottom: 16 }}>
-          <Row gutter={[16, 16]} style={{ width: "100%" }}>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <Form.Item name="softwareVendor" label="软件厂家">
-                <Select placeholder="请选择软件厂家" allowClear>
-                  {softwareVendorOptions.map((option) => (
-                    <Option key={option.value} value={option.value}>
-                      {option.label}
-                    </Option>
-                  ))}
-                </Select>
+          <Row gutter={[16, 16]} align="middle">
+            <Col>
+              <Form.Item name="fsuid" label="FSU ID">
+                <Input
+                  placeholder="请输入FSU ID"
+                  allowClear
+                  style={{ width: 200 }}
+                />
               </Form.Item>
             </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <Form.Item name="hardwareVendor" label="硬件厂家">
-                <Select placeholder="请选择硬件厂家" allowClear>
-                  {hardwareVendorOptions.map((option) => (
-                    <Option key={option.value} value={option.value}>
-                      {option.label}
-                    </Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <Form.Item name="fsuType" label="FSU类别">
-                <Select placeholder="请选择FSU类别" allowClear>
-                  {fsuTypeOptions.map((option) => (
-                    <Option key={option.value} value={option.value}>
-                      {option.label}
-                    </Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <Form.Item name="version" label="软件版本">
-                <Select placeholder="请选择软件版本" allowClear>
-                  {softwareVersionOptions.map((option) => (
-                    <Option key={option.value} value={option.value}>
-                      {option.label}
-                    </Option>
-                  ))}
-                </Select>
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <Form.Item name="powerId" label="电源ID">
-                <Input placeholder="请输入电源ID" allowClear />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <Form.Item name="lithiumBatteryId1" label="锂电池1ID">
-                <Input placeholder="请输入锂电池1ID" allowClear />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <Form.Item name="temperatureId" label="温湿度ID">
-                <Input placeholder="请输入温湿度ID" allowClear />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <Form.Item name="airConditionerId" label="空调ID">
-                <Input placeholder="请输入空调ID" allowClear />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <Form.Item name="smartAccessId" label="智能门禁ID">
-                <Input placeholder="请输入智能门禁ID" allowClear />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <Form.Item name="waterLeakageId" label="水浸ID">
-                <Input placeholder="请输入水浸ID" allowClear />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <Form.Item name="infraredId" label="红外ID">
-                <Input placeholder="请输入红外ID" allowClear />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <Form.Item name="smokeDetectorId" label="烟感ID">
-                <Input placeholder="请输入烟感ID" allowClear />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <Form.Item name="nonSmartAccessId" label="非智能门禁ID">
-                <Input placeholder="请输入非智能门禁ID" allowClear />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <Form.Item name="siteName" label="站点名称">
-                <Input placeholder="请输入站点名称" allowClear />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
-              <Form.Item name="scServerAddress" label="SC服务器地址">
-                <Input placeholder="请输入SC服务器地址" allowClear />
-              </Form.Item>
-            </Col>
-            <Col xs={24} sm={12} md={8} lg={6}>
+            <Col>
               <Form.Item name="creator" label="创建人">
-                <Input placeholder="请输入创建人" allowClear />
+                <Input
+                  placeholder="请输入创建人"
+                  allowClear
+                  style={{ width: 150 }}
+                />
               </Form.Item>
             </Col>
           </Row>
@@ -823,7 +789,7 @@ const FsuOnlineManagement = () => {
       </Card>
 
       {/* 操作按钮区域 */}
-      <Card style={{ marginBottom: 24 }}>
+      <Card style={{ marginBottom: 16 }}>
         <Space>
           <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
             新增
@@ -899,7 +865,7 @@ const FsuOnlineManagement = () => {
               setPagination((prev) => ({ ...prev, current: page, pageSize }));
             },
           }}
-          scroll={{ x: 3600, y: 600 }}
+          scroll={{ x: 3600, y: 500 }}
           size="middle"
           locale={{
             emptyText: "暂无数据",
@@ -953,7 +919,7 @@ const FsuOnlineManagement = () => {
                 name="scServerAddress"
                 label="SC服务器地址"
                 rules={[{ required: true, message: "请选择SC服务器地址" }]}
-                initialValue="zb-ln-r.toweraiot.cn"
+                initialValue="ln-r.toweraiot.cn"
               >
                 <Select
                   placeholder="请选择SC服务器地址"
