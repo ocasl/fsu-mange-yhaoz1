@@ -4,7 +4,6 @@ import AdminLayout from "./components/AdminLayout";
 import FsuOnlineManagement from "./components/FsuOnlineManagement";
 import FsuRegister from "./components/FsuRegister";
 import AlarmReport from "./components/AlarmReport";
-import FsuConfig from "./components/FsuConfig";
 import UserManagement from "./components/UserManagement";
 import OperationLogs from "./components/OperationLogs";
 import Login from "./components/Login";
@@ -72,7 +71,6 @@ function App() {
   const pageComponents = {
     dashboard: <Dashboard currentUser={currentUser} />,
     "fsu-online": <FsuOnlineManagement />,
-    "fsu-config": <FsuConfig />,
     "alarm-report": <AlarmReport />,
     "operation-logs": <OperationLogs />,
     "user-management":

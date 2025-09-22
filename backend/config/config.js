@@ -41,6 +41,10 @@ module.exports = {
 
   // 跨域配置
   cors: {
-    origin: process.env.CORS_ORIGIN || "http://localhost:3000",
+    origin: [
+      "http://localhost:3000", // 本地开发
+      "http://49.233.218.18:3000", // 公网部署
+      process.env.CORS_ORIGIN,
+    ].filter(Boolean),
   },
 };

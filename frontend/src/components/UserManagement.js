@@ -221,7 +221,7 @@ const UserManagement = () => {
               size="small"
               type="text"
               danger
-              onClick={() => updateUserStatus(record.id, "inactive")}
+              onClick={() => updateUserStatus(record._id, "inactive")}
             >
               禁用
             </Button>
@@ -229,7 +229,7 @@ const UserManagement = () => {
             <Button
               size="small"
               type="text"
-              onClick={() => updateUserStatus(record.id, "active")}
+              onClick={() => updateUserStatus(record._id, "active")}
             >
               启用
             </Button>
@@ -237,7 +237,7 @@ const UserManagement = () => {
 
           <Popconfirm
             title="确定要删除这个用户吗？"
-            onConfirm={() => deleteUser(record.id)}
+            onConfirm={() => deleteUser(record._id)}
             okText="确定"
             cancelText="取消"
           >
@@ -368,7 +368,7 @@ const UserManagement = () => {
               `第 ${range[0]}-${range[1]} 条，共 ${total} 条`,
           }}
           onChange={handleTableChange}
-          rowKey="id"
+          rowKey="_id"
           scroll={{ x: 1200 }}
         />
       </Card>

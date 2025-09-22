@@ -3,12 +3,18 @@ import { message } from "antd";
 
 // 创建axios实例
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_BASE_URL || "http://localhost:3001/api",
+  baseURL:
+    process.env.REACT_APP_API_BASE_URL || "http://49.233.218.18:3001/api",
   timeout: 30000, // 30秒超时
   headers: {
     "Content-Type": "application/json",
   },
 });
+
+// 生产环境API配置说明：
+// 如果要部署到服务器，请将上面的 localhost 改为您的公网IP
+// 例如：baseURL: "http://123.456.789.123:3001/api"
+// 或者创建 .env 文件设置 REACT_APP_API_BASE_URL=http://您的公网IP:3001/api
 
 // 请求拦截器
 api.interceptors.request.use(

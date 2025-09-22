@@ -34,6 +34,7 @@ import {
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { fsuApi, handleApiResponse, handleApiError } from "../services/api";
+import { getScServerOptions, generateMainVPN } from "../data/provinceConfig";
 
 const { Option } = Select;
 const { Title, Text } = Typography;
@@ -951,20 +952,43 @@ const FsuOnlineManagement = () => {
               <Form.Item
                 name="scServerAddress"
                 label="SC服务器地址"
-                rules={[{ required: true, message: "请输入SC服务器地址" }]}
-                initialValue="sn.toweraiot.cn"
+                rules={[{ required: true, message: "请选择SC服务器地址" }]}
+                initialValue="zb-ln-r.toweraiot.cn"
               >
-                <Input placeholder="默认：sn.toweraiot.cn" />
+                <Select
+                  placeholder="请选择SC服务器地址"
+                  showSearch
+                  filterOption={(input, option) =>
+                    option.children
+                      .toLowerCase()
+                      .indexOf(input.toLowerCase()) >= 0
+                  }
+                  onChange={(value) => {
+                    // 自动生成MainVPN
+                    const mainVpn = generateMainVPN(value);
+                    form.setFieldsValue({ mainVpn });
+                  }}
+                >
+                  {getScServerOptions().map((option) => (
+                    <Option key={option.value} value={option.value}>
+                      {option.label}
+                    </Option>
+                  ))}
+                </Select>
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item
                 name="mainVpn"
                 label="MainVPN"
-                rules={[{ required: true, message: "请输入MainVPN地址" }]}
-                initialValue="sn.toweraiot.cn,sn.toweraiot.cn"
+                rules={[{ required: true, message: "MainVPN地址不能为空" }]}
+                initialValue="ln.toweraiot.cn,ln.toweraiot.cn"
               >
-                <Input placeholder="默认：sn.toweraiot.cn,sn.toweraiot.cn" />
+                <Input
+                  placeholder="将根据SC服务器地址自动生成"
+                  readOnly
+                  style={{ backgroundColor: "#f5f5f5" }}
+                />
               </Form.Item>
             </Col>
           </Row>

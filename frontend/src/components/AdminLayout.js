@@ -54,21 +54,9 @@ const AdminLayout = ({
       label: "首页",
     },
     {
-      key: "fsu-management",
-      icon: <CloudServerOutlined />,
-      label: "FSU管理",
-      children: [
-        {
-          key: "fsu-online",
-          icon: <MonitorOutlined />,
-          label: "FSU上线",
-        },
-        {
-          key: "fsu-config",
-          icon: <SettingOutlined />,
-          label: "配置管理",
-        },
-      ],
+      key: "fsu-online",
+      icon: <MonitorOutlined />,
+      label: "FSU上线",
     },
     {
       key: "alarm-report",
@@ -122,8 +110,7 @@ const AdminLayout = ({
   // 面包屑映射
   const breadcrumbMap = {
     dashboard: ["首页"],
-    "fsu-online": ["首页", "FSU管理", "FSU上线"],
-    "fsu-config": ["首页", "FSU管理", "配置管理"],
+    "fsu-online": ["首页", "FSU上线"],
     "alarm-report": ["首页", "告警管理"],
     "operation-logs": ["首页", "操作记录"],
     "user-management": ["首页", "用户管理"],
@@ -166,7 +153,6 @@ const AdminLayout = ({
       <Menu
         mode="inline"
         selectedKeys={[currentPage]}
-        defaultOpenKeys={["fsu-management"]}
         items={menuItems}
         onClick={handleMenuClick}
         style={{ border: 0 }}
@@ -226,7 +212,6 @@ const AdminLayout = ({
           theme="dark"
           mode="inline"
           selectedKeys={[currentPage]}
-          defaultOpenKeys={["fsu-management"]}
           items={menuItems}
           onClick={handleMenuClick}
           style={{ border: 0 }}
