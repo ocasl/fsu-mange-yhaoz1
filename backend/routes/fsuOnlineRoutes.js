@@ -4,7 +4,7 @@ const fsuOnlineController = require("../controllers/fsuOnlineController");
 const { optionalAuth } = require("../middleware/auth");
 const { fsuLogger } = require("../middleware/operationLogger");
 
-// FSU上线管理路由 - 添加操作日志记录
+// 上线管理路由 - 添加操作日志记录
 router.get("/list", optionalAuth, fsuOnlineController.getFsuOnlineList);
 router.post("/", optionalAuth, fsuLogger, fsuOnlineController.addFsuOnline);
 router.put(
@@ -32,6 +32,11 @@ router.post(
   fsuOnlineController.batchDeleteFsuOnline
 );
 router.get("/export", optionalAuth, fsuOnlineController.exportFsuOnline);
+router.get(
+  "/device-mappings",
+  optionalAuth,
+  fsuOnlineController.getDeviceMappings
+);
 router.get("/:id", optionalAuth, fsuOnlineController.getFsuOnlineDetail);
 
 module.exports = router;

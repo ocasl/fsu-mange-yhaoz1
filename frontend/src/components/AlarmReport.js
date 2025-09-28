@@ -25,6 +25,7 @@ import {
   ExclamationCircleOutlined,
   BellOutlined,
   SyncOutlined,
+  CloseCircleOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { fsuApi, handleApiResponse, handleApiError } from "../services/api";
@@ -33,11 +34,13 @@ const { Title, Text } = Typography;
 
 const AlarmReport = () => {
   const [form] = Form.useForm();
+  const [clearForm] = Form.useForm();
   const [searchForm] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [tableLoading, setTableLoading] = useState(false);
   const [scipLoading, setScipLoading] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isClearModalVisible, setIsClearModalVisible] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [dataSource, setDataSource] = useState([]);
   const [pagination, setPagination] = useState({
@@ -200,6 +203,41 @@ const AlarmReport = () => {
     }
   };
 
+  // 为清除告警弹窗获取SCIP（自动填入采集机IP）
+  const handleGetScipForClear = async () => {
+    try {
+      setScipLoading(true);
+
+      // 获取当前清除告警表单中的FSU ID
+      const currentFsuId = clearForm.getFieldValue("fsuid");
+      if (!currentFsuId || currentFsuId.trim() === "") {
+        message.warning("请先填写FSU ID，然后再获取SCIP");
+        return;
+      }
+
+      const response = await fsuApi.getScipFromLogs(currentFsuId);
+      const result = handleApiResponse(response);
+
+      if (result.success && result.data.scip) {
+        clearForm.setFieldsValue({ collectorIp: result.data.scip });
+        message.success(`成功获取到SCIP: ${result.data.scip}`);
+        if (result.data.source) {
+          message.info(`来源: ${result.data.source}`);
+        }
+      } else {
+        message.warning(
+          result.message ||
+            `未找到FSU ${currentFsuId} 的SCIP信息，可能该设备未通过本软件注册，请手动填写或前往OMC系统查询`
+        );
+      }
+    } catch (error) {
+      const errorMsg = handleApiError(error);
+      message.error(`获取SCIP失败: ${errorMsg}`);
+    } finally {
+      setScipLoading(false);
+    }
+  };
+
   // 保存上报告警信息
   const handleSave = async () => {
     try {
@@ -227,6 +265,37 @@ const AlarmReport = () => {
     } catch (error) {
       const errorMsg = handleApiError(error);
       message.error(`上报失败: ${errorMsg}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 新增清除告警
+  const handleClearAdd = () => {
+    setIsClearModalVisible(true);
+    clearForm.resetFields();
+  };
+
+  // 保存清除告警信息
+  const handleClearSave = async () => {
+    try {
+      setLoading(true);
+      const values = await clearForm.validateFields();
+
+      console.log("保存清除告警信息:", values);
+
+      // 清除告警
+      const response = await fsuApi.clearAlarm(values);
+      const result = handleApiResponse(response);
+
+      message.success(
+        "告警清除成功！清除报文已向运监平台发送，请稍后查看运监平台。"
+      );
+      setIsClearModalVisible(false);
+      loadData();
+    } catch (error) {
+      const errorMsg = handleApiError(error);
+      message.error(`清除失败: ${errorMsg}`);
     } finally {
       setLoading(false);
     }
@@ -298,6 +367,25 @@ const AlarmReport = () => {
           {text}
         </Text>
       ),
+    },
+    {
+      title: "类型",
+      dataIndex: "type",
+      key: "type",
+      width: 80,
+      render: (text) => {
+        const isReport = text === "report";
+        return (
+          <Text 
+            style={{ 
+              color: isReport ? "#f5222d" : "#52c41a",
+              fontWeight: "bold"
+            }}
+          >
+            {isReport ? "上报" : "清除"}
+          </Text>
+        );
+      },
     },
     {
       title: "状态",
@@ -449,7 +537,15 @@ const AlarmReport = () => {
             onClick={handleAdd}
             danger
           >
-            新增上报告警
+            上报告警
+          </Button>
+          <Button
+            type="primary"
+            icon={<CloseCircleOutlined />}
+            onClick={handleClearAdd}
+            style={{ backgroundColor: "#52c41a", borderColor: "#52c41a" }}
+          >
+            清除告警
           </Button>
         </Space>
       </Card>
@@ -583,6 +679,128 @@ const AlarmReport = () => {
                   icon={<SyncOutlined />}
                   loading={scipLoading}
                   onClick={handleGetScip}
+                  title="自动获取SCIP"
+                />
+              }
+            />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* 清除告警弹窗 */}
+      <Modal
+        title={
+          <Space>
+            <CloseCircleOutlined style={{ color: "#52c41a" }} />
+            清除告警
+          </Space>
+        }
+        open={isClearModalVisible}
+        onOk={handleClearSave}
+        onCancel={() => setIsClearModalVisible(false)}
+        width={600}
+        confirmLoading={loading}
+        destroyOnClose
+        okText="确定"
+        cancelText="取消"
+      >
+        <Alert
+          message="重要提示"
+          description="清除告警将向运监平台发送告警清除报文，请确认要清除的告警信息准确无误！"
+          type="info"
+          showIcon
+          style={{ marginBottom: 24 }}
+        />
+
+        <Form form={clearForm} layout="vertical" preserve={false}>
+          <Form.Item
+            name="fsuid"
+            label="FSU ID"
+            rules={[{ required: true, message: "请输入FSU ID" }]}
+          >
+            <Input placeholder="例如：61082243800070" />
+          </Form.Item>
+
+          <Form.Item
+            name="signalId"
+            label="信号量ID"
+            rules={[{ required: true, message: "请输入信号量ID" }]}
+          >
+            <Input placeholder="例如：0418101001" />
+          </Form.Item>
+
+          <Form.Item
+            name="alarmDesc"
+            label="告警描述"
+            rules={[{ required: true, message: "请输入告警描述" }]}
+          >
+            <Input placeholder="例如：温度过高（40℃）" />
+          </Form.Item>
+
+          <Form.Item
+            name="deviceId"
+            label="设备ID"
+            rules={[{ required: true, message: "请输入设备ID" }]}
+          >
+            <Input placeholder="例如：61082406000006" />
+          </Form.Item>
+
+          <Form.Item
+            name="alarmLevel"
+            label="告警等级"
+            rules={[{ required: true, message: "请选择告警等级" }]}
+          >
+            <Select placeholder="请选择告警等级">
+              <Select.Option value="1">1级（紧急告警）</Select.Option>
+              <Select.Option value="2">2级（重要告警）</Select.Option>
+              <Select.Option value="3">3级（次要告警）</Select.Option>
+              <Select.Option value="4">4级（警告告警）</Select.Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            name="collectorIp"
+            label={
+              <Space>
+                采集机IP
+                <Tooltip title="点击按钮自动从注册报文中获取SCIP">
+                  <Button
+                    type="link"
+                    size="small"
+                    icon={<SyncOutlined />}
+                    loading={scipLoading}
+                    onClick={() => {
+                      // 为清除告警弹窗获取SCIP的处理函数
+                      handleGetScipForClear();
+                    }}
+                    style={{ padding: 0, height: "auto" }}
+                  >
+                    自动获取
+                  </Button>
+                </Tooltip>
+              </Space>
+            }
+            rules={[
+              { required: true, message: "请输入采集机IP" },
+              {
+                pattern:
+                  /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/,
+                message: "请输入正确的IP地址格式",
+              },
+            ]}
+          >
+            <Input
+              placeholder="例如：192.168.1.100"
+              addonAfter={
+                <Button
+                  type="text"
+                  size="small"
+                  icon={<SyncOutlined />}
+                  loading={scipLoading}
+                  onClick={() => {
+                    // 为清除告警弹窗获取SCIP的处理函数
+                    handleGetScipForClear();
+                  }}
                   title="自动获取SCIP"
                 />
               }

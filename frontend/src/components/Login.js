@@ -59,7 +59,7 @@ const Login = ({ onLoginSuccess }) => {
       >
         <div style={{ textAlign: "center", marginBottom: 24 }}>
           <Title level={2} style={{ margin: 0, color: "#1890ff" }}>
-            FSU管理系统
+            监控管理系统
           </Title>
           <p style={{ color: "#666", marginTop: 8 }}>请登录您的账号</p>
         </div>
@@ -113,7 +113,7 @@ const Login = ({ onLoginSuccess }) => {
         </Form>
 
         <div style={{ textAlign: "center", color: "#666", fontSize: 12 }}>
-          <p>FSU动环监控管理系统 v1.0.0</p>
+          <p>监控管理系统 v1.0.0</p>
         </div>
       </Card>
     </div>

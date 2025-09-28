@@ -4,6 +4,12 @@ const {
   buildRegisterXml,
   parseScResponse,
   buildSoapMessage,
+  buildLogoutXml,
+  buildLogoutSoapMessage,
+  buildLogoutXmlEmpty,
+  buildLogoutXmlOnlyFsuId,
+  buildLogoutSoapMessageEmpty,
+  buildLogoutSoapMessageOnlyFsuId,
 } = require("../utils/xmlBuilder");
 const logger = require("../utils/logger");
 const FSULogAnalyzer = require("../utils/fsuLogAnalyzer");
@@ -459,8 +465,211 @@ const sendDirectLogin = async (fsuData) => {
   }
 };
 
+/**
+ * 发送FSU下线LOGOUT请求到SC服务器
+ * @param {Object} fsuData - FSU设备数据，包含fsuId和scServerAddress
+ * @returns {Promise<Object>} 下线结果
+ */
+const sendLogoutToSC = async (fsuData) => {
+  const interfaceName = "LOGOUT";
+  let logId = null;
+
+  try {
+    const { fsuId, scServerAddress } = fsuData;
+
+    if (!fsuId) {
+      throw new Error("FSU ID不能为空");
+    }
+
+    logger.info(`开始向SC发送FSU下线LOGOUT请求，FSU ID: ${fsuId}`);
+
+    // 1. 构造LOGOUT XML报文
+    const xmlBody = buildLogoutXml(fsuId);
+    logger.debug(`构造的LOGOUT报文:`, { xml: xmlBody });
+
+    // 2. 构造请求URL
+    const serverHost = scServerAddress || scConfig.host;
+    const scUrl = `${scConfig.protocol}://${serverHost}:${scConfig.port}/services/SCService`;
+    logger.info(`SC服务器地址: ${scUrl}`);
+
+    // 开始记录接口调用日志
+    logId = fsuLogAnalyzer.logRequestStart(interfaceName, scUrl, xmlBody);
+
+    // 3. 尝试多种请求方式和报文格式
+    const requestMethods = [
+      {
+        name: "SOAP包装-带FsuId和FsuCode",
+        body: buildLogoutSoapMessage(fsuId),
+        headers: {
+          "Content-Type": "text/xml; charset=utf-8",
+          SOAPAction: '"invoke"',
+          "User-Agent": "FSU-ZXLW/DAM-2160I-RH",
+        },
+      },
+      {
+        name: "SOAP包装-官方规范格式(空Info)",
+        body: buildLogoutSoapMessageEmpty(fsuId),
+        headers: {
+          "Content-Type": "text/xml; charset=utf-8",
+          SOAPAction: '"invoke"',
+          "User-Agent": "FSU-ZXLW/DAM-2160I-RH",
+        },
+      },
+      {
+        name: "SOAP包装-仅FsuId在Info内",
+        body: buildLogoutSoapMessageOnlyFsuId(fsuId),
+        headers: {
+          "Content-Type": "text/xml; charset=utf-8",
+          SOAPAction: '"invoke"',
+          "User-Agent": "FSU-ZXLW/DAM-2160I-RH",
+        },
+      },
+      {
+        name: "直接XML-带FsuId和FsuCode",
+        body: xmlBody,
+        headers: {
+          "Content-Type": "text/xml; charset=utf-8",
+          "User-Agent": "FSU-ZXLW/DAM-2160I-RH",
+        },
+      },
+      {
+        name: "直接XML-官方规范格式(空Info)",
+        body: buildLogoutXmlEmpty(fsuId),
+        headers: {
+          "Content-Type": "text/xml; charset=utf-8",
+          "User-Agent": "FSU-ZXLW/DAM-2160I-RH",
+        },
+      },
+      {
+        name: "直接XML-仅FsuId在Info内",
+        body: buildLogoutXmlOnlyFsuId(fsuId),
+        headers: {
+          "Content-Type": "text/xml; charset=utf-8",
+          "User-Agent": "FSU-ZXLW/DAM-2160I-RH",
+        },
+      },
+    ];
+
+    let lastError = null;
+
+    for (const method of requestMethods) {
+      try {
+        logger.info(`尝试发送LOGOUT请求 - 方式: ${method.name}`);
+
+        // 发送HTTP请求
+        const response = await smartAxios.post(scUrl, method.body, {
+          headers: method.headers,
+          timeout: scConfig.timeout,
+          validateStatus: function (status) {
+            // 接受200-299和400-499的状态码
+            return status >= 200 && status < 500;
+          },
+        });
+
+        logger.info(`SC服务器响应状态: ${response.status}`);
+        logger.debug(`SC服务器响应内容:`, { data: response.data });
+
+        // 记录成功的接口调用日志
+        if (logId) {
+          fsuLogAnalyzer.logRequestSuccess(
+            logId,
+            response.data,
+            response.status
+          );
+        }
+
+        // 解析响应
+        if (response.status >= 200 && response.status < 300) {
+          // 检查是否是LOGOUT_ACK响应
+          if (
+            response.data &&
+            (response.data.includes("LOGOUT_ACK") ||
+              response.data.includes("<Code>104</Code>"))
+          ) {
+            logger.info(`✅ FSU设备下线成功`, {
+              fsuId: fsuId,
+              method: method.name,
+              response: response.data,
+            });
+
+            return {
+              success: true,
+              message: "FSU设备下线成功",
+              data: {
+                fsuId: fsuId,
+                method: method.name,
+                response: response.data,
+              },
+            };
+          } else {
+            logger.warn(`收到非预期的响应格式:`, {
+              fsuId: fsuId,
+              response: response.data,
+            });
+          }
+        }
+
+        // 如果状态码不是2xx，继续尝试下一种方法
+        lastError = new Error(
+          `HTTP ${response.status}: ${response.data || "未知错误"}`
+        );
+      } catch (error) {
+        logger.warn(`${method.name}方式发送LOGOUT失败:`, {
+          fsuId: fsuId,
+          error: error.message,
+        });
+        lastError = error;
+        continue;
+      }
+    }
+
+    // 所有方法都失败了
+    if (logId) {
+      fsuLogAnalyzer.logRequestError(
+        logId,
+        lastError || new Error("所有请求方法都失败")
+      );
+    }
+
+    logger.error(`FSU设备下线失败，所有请求方法都失败`, {
+      fsuId: fsuId,
+      lastError: lastError?.message,
+    });
+
+    return {
+      success: false,
+      message: `FSU设备下线失败: ${lastError?.message || "未知错误"}`,
+      error: {
+        code: "LOGOUT_ERROR",
+        details: lastError?.message,
+      },
+    };
+  } catch (error) {
+    // 记录失败的接口调用日志
+    if (logId) {
+      fsuLogAnalyzer.logRequestError(logId, error);
+    }
+
+    logger.error(`发送LOGOUT请求异常:`, {
+      fsuId: fsuData.fsuId,
+      error: error.message,
+      stack: error.stack,
+    });
+
+    return {
+      success: false,
+      message: `LOGOUT请求失败: ${error.message}`,
+      error: {
+        code: "LOGOUT_ERROR",
+        details: error.message,
+      },
+    };
+  }
+};
+
 module.exports = {
   sendRegisterToSC,
   testScConnection,
   sendDirectLogin,
+  sendLogoutToSC,
 };

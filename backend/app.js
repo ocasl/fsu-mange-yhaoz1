@@ -62,7 +62,7 @@ app.use("/api", apiRoutes);
 // 根路径处理
 app.get("/", (req, res) => {
   res.json({
-    message: "FSU管理系统API服务",
+    message: "监控管理系统API服务",
     version: "1.0.0",
     status: "running",
     timestamp: new Date().toISOString(),
@@ -110,14 +110,14 @@ app.use((err, req, res, next) => {
 
 // 启动服务器
 const server = app.listen(PORT, () => {
-  logger.info(`FSU管理系统API服务启动成功`, {
+  logger.info(`监控管理系统API服务启动成功`, {
     port: PORT,
     environment: process.env.NODE_ENV || "development",
     nodeVersion: process.version,
     platform: process.platform,
   });
 
-  console.log(`🚀 FSU管理系统API服务启动成功！`);
+  console.log(`🚀 监控管理系统API服务启动成功！`);
   console.log(`📡 服务地址: http://localhost:${PORT}`);
   console.log(`📋 API文档: http://localhost:${PORT}/api`);
   console.log(`🔍 健康检查: http://localhost:${PORT}/api/health`);

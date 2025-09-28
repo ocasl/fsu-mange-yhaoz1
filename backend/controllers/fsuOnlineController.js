@@ -4,6 +4,7 @@ const { sendDirectLogin } = require("../services/scService");
 const fsuWebServiceServer = require("../services/fsuWebServiceServer");
 const heartbeatManager = require("../services/heartbeatManager");
 const vpnService = require("../services/vpnService");
+const deviceDataManager = require("../utils/deviceDataManager");
 
 /**
  * 从FSU记录中提取设备ID列表
@@ -259,132 +260,168 @@ exports.addFsuOnline = async (req, res) => {
         ],
       };
 
-      // 添加关联设备 - 16个设备字段（4个锂电池 + 2个蓄电池 + 10个其他设备）
-      if (fsuData.powerId) loginData.devices.push(fsuData.powerId);
-      if (fsuData.lithiumBatteryId1)
-        loginData.devices.push(fsuData.lithiumBatteryId1);
-      if (fsuData.temperatureId) loginData.devices.push(fsuData.temperatureId);
-      if (fsuData.lithiumBatteryId2)
-        loginData.devices.push(fsuData.lithiumBatteryId2);
-      if (fsuData.airConditionerId)
-        loginData.devices.push(fsuData.airConditionerId);
-      if (fsuData.lithiumBatteryId3)
-        loginData.devices.push(fsuData.lithiumBatteryId3);
-      if (fsuData.smartAccessId) loginData.devices.push(fsuData.smartAccessId);
-      if (fsuData.lithiumBatteryId4)
-        loginData.devices.push(fsuData.lithiumBatteryId4);
-      if (fsuData.waterLeakageId)
-        loginData.devices.push(fsuData.waterLeakageId);
-      if (fsuData.leadAcidBatteryId1)
-        loginData.devices.push(fsuData.leadAcidBatteryId1);
-      if (fsuData.infraredId) loginData.devices.push(fsuData.infraredId);
-      if (fsuData.smokeDetectorId)
-        loginData.devices.push(fsuData.smokeDetectorId);
-      if (fsuData.leadAcidBatteryId2)
-        loginData.devices.push(fsuData.leadAcidBatteryId2);
-      if (fsuData.nonSmartAccessId)
-        loginData.devices.push(fsuData.nonSmartAccessId);
-      if (fsuData.deviceId13) loginData.devices.push(fsuData.deviceId13);
-      if (fsuData.deviceId14) loginData.devices.push(fsuData.deviceId14);
-      if (fsuData.deviceId15) loginData.devices.push(fsuData.deviceId15);
+      // 提取所有子设备ID
+      const allDeviceIds = extractDeviceIdsFromRecord(fsuData);
+
+      // 添加关联设备到登录数据
+      loginData.devices = allDeviceIds;
+
+      // 注册FSU设备及其子设备到设备数据管理器
+      const deviceRegistrationSuccess = deviceDataManager.registerFsuDevices(
+        fsuData.fsuid,
+        allDeviceIds,
+        {
+          siteName: fsuData.siteName,
+          softwareVendor: fsuData.softwareVendor,
+          hardwareVendor: fsuData.hardwareVendor,
+          fsuType: fsuData.fsuType,
+          version: fsuData.version,
+          mainVpn: fsuData.mainVpn,
+          scServerAddress: fsuData.scServerAddress,
+        }
+      );
+
+      if (deviceRegistrationSuccess) {
+        logger.info(`FSU设备及子设备注册成功: ${fsuData.fsuid}`, {
+          fsuId: fsuData.fsuid,
+          deviceCount: allDeviceIds.length,
+          devices: allDeviceIds,
+        });
+      } else {
+        logger.warn(`FSU设备注册失败: ${fsuData.fsuid}`, {
+          fsuId: fsuData.fsuid,
+        });
+      }
 
       // 第一步：发送LOGIN注册到SC服务器
-      logger.info("🚀 第一步：向SC服务器发送LOGIN注册请求", {
+      logger.info("📡 第一步：向SC服务器发送LOGIN注册请求", {
         fsuid: fsuData.fsuid,
         scServerAddress: fsuData.scServerAddress,
         deviceCount: loginData.devices.length,
+        step: "1/2"
       });
 
       const startTime = Date.now();
-      const loginResult = await sendDirectLogin(loginData);
-      const duration = Date.now() - startTime;
+      let loginResult = null;
+      let duration = 0;
 
-      // 更新上线状态
-      if (loginResult.success) {
-        logger.info(`✅ LOGIN注册成功，耗时: ${duration}ms`, {
-          fsuid: fsuData.fsuid,
-          duration,
-        });
+      try {
+        loginResult = await sendDirectLogin(loginData);
+        duration = Date.now() - startTime;
 
-        // 第二步：LOGIN成功后启动WebService服务器等待心跳
-        logger.info("🌐 第二步：启动FSU WebService服务器等待SC心跳请求", {
-          fsuid: fsuData.fsuid,
-        });
+        // 更新上线状态
+        if (loginResult.success) {
+          logger.info(`✅ LOGIN注册成功，耗时: ${duration}ms`, {
+            fsuid: fsuData.fsuid,
+            duration,
+          });
 
-        try {
-          // 启动WebService服务器监听心跳
-          await fsuWebServiceServer.start(
-            loginData,
-            8080,
-            loginData.internalIP
-          );
+          // 第二步：LOGIN成功后启动WebService服务器
+          logger.info("🚀 第二步：启动FSU WebService服务器", {
+            fsuid: fsuData.fsuid,
+            internalIP: loginData.internalIP,
+            step: "2/2"
+          });
 
-          // 确保设备已添加到WebService服务器的设备列表中
-          fsuWebServiceServer.addFsuDevice(loginData);
+          try {
+            // 启动WebService服务器监听心跳
+            await fsuWebServiceServer.start(
+              loginData,
+              8080,
+              loginData.internalIP
+            );
 
-          // 监听心跳事件并更新数据库
-          fsuWebServiceServer.removeAllListeners("heartbeat"); // 移除之前的监听器
-          fsuWebServiceServer.on("heartbeat", async (heartbeatData) => {
-            try {
-              const time = new Date().toLocaleTimeString();
-              logger.info(
-                `💗 [${time}] 收到SC心跳 - FSU ID: ${heartbeatData.fsuId} ${
-                  heartbeatData.success ? "✅" : "❌"
-                }`
-              );
+            // 确保设备已添加到WebService服务器的设备列表中
+            fsuWebServiceServer.addFsuDevice(loginData);
 
-              // 更新数据库中的心跳时间
-              if (heartbeatData.success) {
-                await FsuOnline.findOneAndUpdate(
-                  { fsuid: heartbeatData.fsuId },
-                  {
-                    status: "online",
-                    lastHeartbeatTime: new Date(),
-                  },
-                  { new: true }
+            logger.info("✅ WebService服务器已准备就绪", {
+              fsuid: fsuData.fsuid,
+              step: "2/2"
+            });
+
+            // 监听心跳事件并更新数据库
+            fsuWebServiceServer.removeAllListeners("heartbeat"); // 移除之前的监听器
+            fsuWebServiceServer.on("heartbeat", async (heartbeatData) => {
+              try {
+                const time = new Date().toLocaleTimeString();
+                logger.info(
+                  `💗 [${time}] 收到SC心跳 - FSU ID: ${heartbeatData.fsuId} ${
+                    heartbeatData.success ? "✅" : "❌"
+                  }`
                 );
 
-                logger.info("FSU心跳状态已更新", {
-                  fsuid: heartbeatData.fsuId,
-                  status: "online",
-                  lastHeartbeatTime: new Date(),
-                });
-              }
-            } catch (error) {
-              logger.error("处理心跳事件时发生错误", { error: error.message });
-            }
-          });
+                // 更新数据库中的心跳时间
+                if (heartbeatData.success) {
+                  await FsuOnline.findOneAndUpdate(
+                    { fsuid: heartbeatData.fsuId },
+                    {
+                      status: "online",
+                      lastHeartbeatTime: new Date(),
+                    },
+                    { new: true }
+                  );
 
-          logger.info("🎯 FSU WebService服务器启动成功，等待SC心跳请求", {
-            fsuid: fsuData.fsuid,
-            port: 8080,
-          });
+                  logger.info("FSU心跳状态已更新", {
+                    fsuid: heartbeatData.fsuId,
+                    status: "online",
+                    lastHeartbeatTime: new Date(),
+                  });
+                }
+              } catch (error) {
+                logger.error("处理心跳事件时发生错误", { error: error.message });
+              }
+            });
+
+            logger.info("🎯 FSU设备上线成功，WebService服务器已就绪", {
+              fsuid: fsuData.fsuid,
+              port: 8080,
+            });
+
+            await FsuOnline.findByIdAndUpdate(fsuOnline._id, {
+              status: "online",
+              lastHeartbeatTime: new Date(),
+            });
+
+            logger.info(`FSU上线成功，耗时: ${duration}ms`, {
+              fsuid: fsuData.fsuid,
+              duration,
+            });
         } catch (webServiceError) {
           logger.error("启动WebService服务器失败", {
             fsuid: fsuData.fsuid,
             error: webServiceError.message,
           });
+
+          await FsuOnline.findByIdAndUpdate(fsuOnline._id, {
+            status: "offline",
+          });
         }
-
-        await FsuOnline.findByIdAndUpdate(fsuOnline._id, {
-          status: "online",
-          lastHeartbeatTime: new Date(),
-        });
-
-        logger.info(`FSU上线成功，耗时: ${duration}ms`, {
-          fsuid: fsuData.fsuid,
-          duration,
-        });
       } else {
         await FsuOnline.findByIdAndUpdate(fsuOnline._id, {
           status: "offline",
         });
 
-        logger.warn(`FSU上线失败，耗时: ${duration}ms`, {
+        logger.warn(`FSU LOGIN失败，耗时: ${duration}ms`, {
           fsuid: fsuData.fsuid,
           duration,
           error: loginResult.message,
         });
+      }
+      } catch (loginError) {
+        duration = Date.now() - startTime;
+        logger.error("发送LOGIN请求失败", {
+          fsuid: fsuData.fsuid,
+          error: loginError.message,
+        });
+
+        await FsuOnline.findByIdAndUpdate(fsuOnline._id, {
+          status: "offline",
+        });
+
+        loginResult = {
+          success: false,
+          message: loginError.message
+        };
       }
 
       // 返回结果
@@ -500,6 +537,18 @@ exports.updateFsuOnlineStatus = async (req, res) => {
     if (status === "online") {
       // 上线操作：添加到WebService服务器并执行LOGIN
       try {
+        // 获取VPN分配的内网IP地址
+        let internalIP;
+        try {
+          internalIP = await vpnService.getInternalIP();
+          logger.info("✅ 获取到VPN内网IP", { internalIP });
+        } catch (ipError) {
+          logger.warn("⚠️ 无法获取VPN内网IP，使用默认IP", {
+            error: ipError.message,
+          });
+          internalIP = "10.3.8.204"; // 使用已知的VPN IP
+        }
+
         // 构建FSU数据对象
         const fsuData = {
           fsuId: fsuOnline.fsuid,
@@ -512,6 +561,7 @@ exports.updateFsuOnlineStatus = async (req, res) => {
           hardwareVendor: fsuOnline.hardwareVendor,
           fsuType: fsuOnline.fsuType,
           version: fsuOnline.version,
+          internalIP: internalIP, // 添加内网IP
 
           // 提取设备ID列表
           devices: extractDeviceIdsFromRecord(fsuOnline),
@@ -530,15 +580,100 @@ exports.updateFsuOnlineStatus = async (req, res) => {
           disasterRecovery: "zb-sn.toweraiot.cn,zb-sn.toweraiot.cn",
         };
 
-        // 启动WebService服务器（如果未启动）
-        await fsuWebServiceServer.start(fsuData, 8080);
-
-        // 执行LOGIN注册
+        // 第一步：向SC发送LOGIN注册请求
+        logger.info("📡 第一步：向SC发送LOGIN注册请求", {
+          fsuid: fsuOnline.fsuid,
+          step: "1/2"
+        });
         const loginResult = await sendDirectLogin(fsuData);
+
         if (loginResult.success) {
-          logger.info(`FSU设备上线成功`, { fsuid: fsuOnline.fsuid });
+          logger.info("✅ LOGIN注册成功", {
+            fsuid: fsuOnline.fsuid,
+            step: "1/2"
+          });
+
+          // 第二步：LOGIN成功后启动WebService服务器
+          logger.info("🚀 第二步：启动WebService服务器", {
+            fsuid: fsuOnline.fsuid,
+            internalIP: internalIP,
+            step: "2/2"
+          });
+
+          try {
+            // 启动WebService服务器监听心跳
+            await fsuWebServiceServer.start(fsuData, 8080, internalIP);
+
+            // 确保设备已添加到WebService服务器的设备列表中
+            fsuWebServiceServer.addFsuDevice(fsuData);
+
+            logger.info("✅ WebService服务器已准备就绪", {
+              fsuid: fsuOnline.fsuid,
+              step: "2/2"
+            });
+
+            // 监听心跳事件并更新数据库
+            fsuWebServiceServer.removeAllListeners("heartbeat"); // 移除之前的监听器
+            fsuWebServiceServer.on("heartbeat", async (heartbeatData) => {
+              try {
+                const time = new Date().toLocaleTimeString();
+                logger.info(
+                  `💗 [${time}] 收到SC心跳 - FSU ID: ${heartbeatData.fsuId} ${
+                    heartbeatData.success ? "✅" : "❌"
+                  }`
+                );
+
+                // 更新数据库中的心跳时间
+                if (heartbeatData.success) {
+                  await FsuOnline.findOneAndUpdate(
+                    { fsuid: heartbeatData.fsuId },
+                    {
+                      status: "online",
+                      lastHeartbeatTime: new Date(),
+                    },
+                    { new: true }
+                  );
+
+                  logger.info("FSU心跳状态已更新", {
+                    fsuid: heartbeatData.fsuId,
+                    status: "online",
+                    lastHeartbeatTime: new Date(),
+                  });
+                }
+              } catch (error) {
+                logger.error("处理心跳事件时发生错误", { error: error.message });
+              }
+            });
+
+            logger.info("🎯 FSU设备上线成功，WebService服务器已就绪", {
+              fsuid: fsuOnline.fsuid,
+              port: 8080,
+            });
+
+            await FsuOnline.findByIdAndUpdate(id, {
+              status: "online",
+              lastHeartbeatTime: new Date(),
+            });
+
+            logger.info(`FSU上线成功`, {
+              fsuid: fsuOnline.fsuid,
+            });
+          } catch (webServiceError) {
+            logger.error("启动WebService服务器失败", {
+              fsuid: fsuOnline.fsuid,
+              error: webServiceError.message,
+            });
+
+            await FsuOnline.findByIdAndUpdate(id, {
+              status: "offline",
+            });
+          }
         } else {
-          logger.warn(`FSU设备LOGIN失败`, {
+          await FsuOnline.findByIdAndUpdate(id, {
+            status: "offline",
+          });
+
+          logger.warn(`FSU LOGIN失败`, {
             fsuid: fsuOnline.fsuid,
             error: loginResult.message,
           });
@@ -550,17 +685,30 @@ exports.updateFsuOnlineStatus = async (req, res) => {
         });
       }
     } else if (status === "offline") {
-      // 下线操作：从WebService服务器移除设备
+      // 下线操作：只从WebService服务器移除设备，记录保留
       try {
+        logger.info(`🛑 FSU设备下线：从WebService服务器移除`, {
+          fsuid: fsuOnline.fsuid,
+        });
+
+        // 从WebService服务器移除设备
         const removed = fsuWebServiceServer.removeFsuDevice(fsuOnline.fsuid);
         if (removed) {
-          logger.info(`FSU设备已从WebService服务器移除`, {
+          logger.info(`✅ FSU设备已从WebService服务器移除`, {
             fsuid: fsuOnline.fsuid,
             remainingDevices: fsuWebServiceServer.getDeviceCount(),
           });
+        } else {
+          logger.warn(`⚠️ FSU设备未在WebService服务器中找到`, {
+            fsuid: fsuOnline.fsuid,
+          });
         }
+
+        logger.info(`✅ FSU设备下线完成，记录保留`, {
+          fsuid: fsuOnline.fsuid,
+        });
       } catch (error) {
-        logger.error(`FSU设备下线失败`, {
+        logger.error(`❌ FSU设备下线失败`, {
           fsuid: fsuOnline.fsuid,
           error: error.message,
         });
@@ -624,13 +772,12 @@ exports.deleteFsuOnline = async (req, res) => {
       status: fsuOnline.status,
     });
 
-    // 第一步：从WebService服务器中移除该FSU设备
+    // 从WebService服务器移除FSU设备
     try {
       logger.info(`🛑 从WebService服务器移除FSU设备`, {
         fsuid: fsuOnline.fsuid,
       });
 
-      // 从WebService服务器中移除该FSU设备
       const removed = fsuWebServiceServer.removeFsuDevice(fsuOnline.fsuid);
 
       if (removed) {
@@ -639,24 +786,45 @@ exports.deleteFsuOnline = async (req, res) => {
           remainingDevices: fsuWebServiceServer.getDeviceCount(),
         });
       } else {
-        logger.warn(`⚠️  FSU设备未在WebService服务器中找到`, {
+        logger.warn(`⚠️ FSU设备未在WebService服务器中找到`, {
           fsuid: fsuOnline.fsuid,
         });
-      }
-
-      // 如果没有设备在线了，可以考虑停止WebService服务器（可选）
-      if (!fsuWebServiceServer.hasOnlineDevices()) {
-        logger.info("所有FSU设备已下线，WebService服务器保持运行等待新设备");
       }
     } catch (serviceError) {
       logger.warn(`移除FSU设备时发生错误`, {
         fsuid: fsuOnline.fsuid,
         error: serviceError.message,
       });
-      // 即使移除设备失败，仍然继续删除记录
+      // 即使移除失败，仍然继续删除记录
     }
 
-    // 第二步：从数据库中删除记录
+    // 第二步：从设备数据管理器移除FSU设备映射
+    try {
+      logger.info(`🛑 从设备数据管理器移除FSU设备映射`, {
+        fsuid: fsuOnline.fsuid,
+      });
+
+      const deviceRemoved = deviceDataManager.unregisterFsuDevices(
+        fsuOnline.fsuid
+      );
+      if (deviceRemoved) {
+        logger.info(`✅ FSU设备映射已从设备数据管理器移除`, {
+          fsuid: fsuOnline.fsuid,
+        });
+      } else {
+        logger.warn(`⚠️  FSU设备映射未在设备数据管理器中找到`, {
+          fsuid: fsuOnline.fsuid,
+        });
+      }
+    } catch (deviceError) {
+      logger.warn(`移除FSU设备映射时发生错误`, {
+        fsuid: fsuOnline.fsuid,
+        error: deviceError.message,
+      });
+      // 即使移除设备映射失败，仍然继续删除记录
+    }
+
+    // 第三步：从数据库中删除记录
     await FsuOnline.findByIdAndDelete(id);
 
     logger.info(`✅ FSU上线记录删除成功`, {
@@ -718,14 +886,12 @@ exports.batchDeleteFsuOnline = async (req, res) => {
       fsuids: fsuOnlineList.map((fsu) => fsu.fsuid),
     });
 
-    // 第一步：停止所有FSU的心跳服务和WebService服务器，让设备下线
+    // 从WebService服务器移除设备
     const offlineResults = [];
 
     for (const fsu of fsuOnlineList) {
       try {
         logger.info(`🛑 从WebService服务器移除FSU设备`, { fsuid: fsu.fsuid });
-
-        // 从WebService服务器中移除该FSU设备
         const removed = fsuWebServiceServer.removeFsuDevice(fsu.fsuid);
 
         if (removed) {
@@ -733,6 +899,7 @@ exports.batchDeleteFsuOnline = async (req, res) => {
             fsuid: fsu.fsuid,
             success: true,
             message: "设备已从WebService服务器移除",
+            webServiceRemoved: true,
           });
 
           logger.info(`✅ FSU设备已从WebService服务器移除`, {
@@ -744,9 +911,10 @@ exports.batchDeleteFsuOnline = async (req, res) => {
             fsuid: fsu.fsuid,
             success: false,
             message: "设备未在WebService服务器中找到",
+            webServiceRemoved: false,
           });
 
-          logger.warn(`⚠️  FSU设备未在WebService服务器中找到`, {
+          logger.warn(`⚠️ FSU设备未在WebService服务器中找到`, {
             fsuid: fsu.fsuid,
           });
         }
@@ -760,6 +928,7 @@ exports.batchDeleteFsuOnline = async (req, res) => {
           fsuid: fsu.fsuid,
           success: false,
           error: serviceError.message,
+          message: "移除设备失败",
         });
       }
     }
@@ -861,6 +1030,46 @@ exports.exportFsuOnline = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "导出FSU上线数据失败",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * @desc    获取设备映射状态
+ * @route   GET /api/fsu/online/device-mappings
+ * @access  Public
+ */
+exports.getDeviceMappings = async (req, res) => {
+  try {
+    // 获取所有已注册的FSU设备
+    const registeredDevices = deviceDataManager.getAllRegisteredFsuDevices();
+
+    logger.info("查询设备映射状态", {
+      fsuCount: registeredDevices.length,
+    });
+
+    res.json({
+      success: true,
+      data: {
+        fsuCount: registeredDevices.length,
+        fsuDevices: registeredDevices,
+        summary: registeredDevices.map((fsu) => ({
+          fsuId: fsu.fsuId,
+          deviceCount: fsu.deviceCount,
+          registeredAt: fsu.registeredAt,
+        })),
+      },
+      message: "设备映射状态查询成功",
+    });
+  } catch (error) {
+    logger.error("查询设备映射状态失败", {
+      error: error.message,
+    });
+
+    res.status(500).json({
+      success: false,
+      message: "查询设备映射状态失败",
       error: error.message,
     });
   }

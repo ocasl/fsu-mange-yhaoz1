@@ -1,8 +1,8 @@
 {
   "openapi": "3.0.1",
   "info": {
-    "title": "FSU管理系统API",
-    "description": "FSU管理系统API接口文档，包含FSU上线和告警管理功能",
+    "title": "监控管理系统API",
+    "description": "监控管理系统API接口文档，包含FSU上线和告警管理功能",
     "version": "1.0.0"
   },
   "servers": [
@@ -13,7 +13,7 @@
   ],
   "tags": [
     {
-      "name": "FSU上线管理",
+      "name": "上线管理",
       "description": "FSU上线相关接口"
     },
     {
@@ -24,7 +24,7 @@
   "paths": {
     "/fsu/online/list": {
       "get": {
-        "tags": ["FSU上线管理"],
+        "tags": ["上线管理"],
         "summary": "获取FSU上线列表",
         "description": "分页获取FSU上线记录列表，支持多种筛选条件",
         "parameters": [
@@ -142,7 +142,7 @@
     },
     "/fsu/online": {
       "post": {
-        "tags": ["FSU上线管理"],
+        "tags": ["上线管理"],
         "summary": "添加FSU上线记录",
         "description": "添加FSU上线记录并执行上线流程",
         "requestBody": {

@@ -1,6 +1,6 @@
-# FSU 管理系统后端 API 服务
+# FSU 监控管理系统后端 API 服务
 
-基于 Node.js + Express + MongoDB 实现的 FSU 管理系统后端 API 服务，支持 FSU 上线管理、告警上报和清除功能。
+基于 Node.js + Express + MongoDB 实现的 FSU 监控管理系统后端 API 服务，支持 FSU 上线管理、告警上报和清除功能。
 
 ## 🚀 快速开始
 

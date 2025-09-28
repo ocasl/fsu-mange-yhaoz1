@@ -107,7 +107,7 @@ export const fsuApi = {
   // 健康检查
   health: () => api.get("/fsu/health"),
 
-  // FSU上线管理相关接口
+  // 上线管理相关接口
   // 获取FSU上线列表
   getFsuOnlineList: (params) => api.get("/fsu/online/list", { params }),
 
@@ -146,6 +146,9 @@ export const fsuApi = {
 
   // 上报告警
   reportAlarm: (data) => api.post("/alarm/report", data),
+
+  // 清除告警
+  clearAlarm: (data) => api.post("/alarm/clear", data),
 
   // 删除告警记录
   deleteAlarmRecord: (id) => api.delete(`/alarm/${id}`),

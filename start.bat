@@ -1,8 +1,8 @@
 @echo off
 chcp 65001 >nul
-title FSU设备上线管理系统
+title FSU设备上线监控管理系统
 
-echo 🚀 启动FSU设备上线管理系统...
+echo 🚀 启动FSU设备上线监控管理系统...
 echo.
 
 :: 检查Node.js版本

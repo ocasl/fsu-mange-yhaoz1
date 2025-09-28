@@ -12,6 +12,12 @@ router.post(
   alarmLogger,
   alarmController.reportAlarmHandler
 );
+router.post(
+  "/clear",
+  optionalAuth,
+  alarmLogger,
+  alarmController.clearAlarmHandler
+);
 router.delete(
   "/:id",
   optionalAuth,

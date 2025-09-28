@@ -905,6 +905,12 @@ class FSUWebServiceServer extends EventEmitter {
       logger.info("FSU WebService服务器已在运行，添加FSU设备到现有服务器");
       if (fsuData) {
         this.addFsuDevice(fsuData);
+        // 给WebService服务器一些时间来处理新添加的设备
+        await new Promise(resolve => setTimeout(resolve, 100));
+        logger.info("FSU设备已添加到WebService服务器", {
+          fsuId: fsuData.fsuId || fsuData.fsuid,
+          totalDevices: this.fsuDevices.size
+        });
       }
       return Promise.resolve(true);
     }

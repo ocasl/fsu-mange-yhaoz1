@@ -726,7 +726,7 @@ const FsuOnlineManagement = () => {
       <div style={{ marginBottom: 16 }}>
         <Title level={3} style={{ margin: 0, textAlign: "left" }}>
           <CloudServerOutlined style={{ color: "#1890ff", marginRight: 8 }} />
-          FSU上线管理
+          上线管理
         </Title>
         <Text type="secondary">管理和监控FSU设备的上线状态</Text>
       </div>

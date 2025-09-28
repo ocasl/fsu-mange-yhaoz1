@@ -286,9 +286,215 @@ const buildSoapMessage = (fsuData, serviceName) => {
   }
 };
 
+/**
+ * 构造FSU下线LOGOUT XML报文
+ * @param {string} fsuId - FSU设备ID
+ * @returns {string} XML格式的下线报文
+ */
+const buildLogoutXml = (fsuId) => {
+  try {
+    // 构造标准的LOGOUT报文，格式与LOGIN保持一致
+    const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<Request>
+  <PK_Type>
+    <Name>LOGOUT</Name>
+    <Code>103</Code>
+  </PK_Type>
+  <Info>
+    <FsuId>${fsuId}</FsuId>
+    <FsuCode>${fsuId}</FsuCode>
+  </Info>
+</Request>`;
+
+    logger.info("构造LOGOUT报文成功:", {
+      fsuId: fsuId,
+      xmlLength: xmlContent.length,
+    });
+
+    return xmlContent;
+  } catch (error) {
+    logger.error("构造LOGOUT报文失败:", {
+      fsuId: fsuId,
+      error: error.message,
+    });
+    throw new Error(`构造LOGOUT报文失败: ${error.message}`);
+  }
+};
+
+/**
+ * 构造LOGOUT的SOAP消息
+ * @param {string} fsuId - FSU设备ID
+ * @param {string} serviceName - 服务名称
+ * @returns {string} SOAP格式的LOGOUT消息
+ */
+const buildLogoutSoapMessage = (fsuId, serviceName = "SCService") => {
+  try {
+    // 构造LOGOUT的SOAP消息，格式与LOGIN保持一致
+    const soapMessage = `<?xml version="1.0" encoding="utf-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+    <soapenv:Header/>
+    <soapenv:Body>
+        <ns1:invoke xmlns:ns1="http://webservice/">
+            <ns1:xmlStr><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<Request>
+  <PK_Type>
+    <Name>LOGOUT</Name>
+    <Code>103</Code>
+  </PK_Type>
+  <Info>
+    <FsuId>${fsuId}</FsuId>
+    <FsuCode>${fsuId}</FsuCode>
+  </Info>
+</Request>]]></ns1:xmlStr>
+        </ns1:invoke>
+    </soapenv:Body>
+</soapenv:Envelope>`;
+
+    return soapMessage;
+  } catch (error) {
+    throw new Error(`构造LOGOUT SOAP消息失败: ${error.message}`);
+  }
+};
+
+/**
+ * 构造标准官方规范的LOGOUT XML报文（空Info）
+ * @param {string} fsuId - FSU设备ID
+ * @returns {string} XML格式的下线报文
+ */
+const buildLogoutXmlEmpty = (fsuId) => {
+  try {
+    // 按照官方规范XML样例的格式，Info为空
+    const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<Request>
+  <PK_Type>
+    <Name>LOGOUT</Name>
+    <Code>103</Code>
+  </PK_Type>
+  <Info/>
+</Request>`;
+
+    logger.info("构造官方规范LOGOUT报文成功:", {
+      fsuId: fsuId,
+      xmlLength: xmlContent.length,
+      format: "空Info格式"
+    });
+
+    return xmlContent;
+  } catch (error) {
+    logger.error("构造官方规范LOGOUT报文失败:", {
+      fsuId: fsuId,
+      error: error.message,
+    });
+    throw new Error(`构造官方规范LOGOUT报文失败: ${error.message}`);
+  }
+};
+
+/**
+ * 构造仅包含FsuId的LOGOUT XML报文
+ * @param {string} fsuId - FSU设备ID
+ * @returns {string} XML格式的下线报文
+ */
+const buildLogoutXmlOnlyFsuId = (fsuId) => {
+  try {
+    // 仅包含FsuId，不包含FsuCode
+    const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<Request>
+  <PK_Type>
+    <Name>LOGOUT</Name>
+    <Code>103</Code>
+  </PK_Type>
+  <Info>
+    <FsuId>${fsuId}</FsuId>
+  </Info>
+</Request>`;
+
+    logger.info("构造仅FsuId的LOGOUT报文成功:", {
+      fsuId: fsuId,
+      xmlLength: xmlContent.length,
+      format: "仅FsuId格式"
+    });
+
+    return xmlContent;
+  } catch (error) {
+    logger.error("构造仅FsuId的LOGOUT报文失败:", {
+      fsuId: fsuId,
+      error: error.message,
+    });
+    throw new Error(`构造仅FsuId的LOGOUT报文失败: ${error.message}`);
+  }
+};
+
+/**
+ * 构造官方规范的LOGOUT SOAP消息（空Info）
+ * @param {string} fsuId - FSU设备ID
+ * @returns {string} SOAP格式的LOGOUT消息
+ */
+const buildLogoutSoapMessageEmpty = (fsuId) => {
+  try {
+    const soapMessage = `<?xml version="1.0" encoding="utf-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+    <soapenv:Header/>
+    <soapenv:Body>
+        <ns1:invoke xmlns:ns1="http://webservice/">
+            <ns1:xmlStr><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<Request>
+  <PK_Type>
+    <Name>LOGOUT</Name>
+    <Code>103</Code>
+  </PK_Type>
+  <Info/>
+</Request>]]></ns1:xmlStr>
+        </ns1:invoke>
+    </soapenv:Body>
+</soapenv:Envelope>`;
+
+    return soapMessage;
+  } catch (error) {
+    throw new Error(`构造官方规范LOGOUT SOAP消息失败: ${error.message}`);
+  }
+};
+
+/**
+ * 构造仅FsuId的LOGOUT SOAP消息
+ * @param {string} fsuId - FSU设备ID
+ * @returns {string} SOAP格式的LOGOUT消息
+ */
+const buildLogoutSoapMessageOnlyFsuId = (fsuId) => {
+  try {
+    const soapMessage = `<?xml version="1.0" encoding="utf-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
+    <soapenv:Header/>
+    <soapenv:Body>
+        <ns1:invoke xmlns:ns1="http://webservice/">
+            <ns1:xmlStr><![CDATA[<?xml version="1.0" encoding="UTF-8"?>
+<Request>
+  <PK_Type>
+    <Name>LOGOUT</Name>
+    <Code>103</Code>
+  </PK_Type>
+  <Info>
+    <FsuId>${fsuId}</FsuId>
+  </Info>
+</Request>]]></ns1:xmlStr>
+        </ns1:invoke>
+    </soapenv:Body>
+</soapenv:Envelope>`;
+
+    return soapMessage;
+  } catch (error) {
+    throw new Error(`构造仅FsuId的LOGOUT SOAP消息失败: ${error.message}`);
+  }
+};
+
 module.exports = {
   buildRegisterXml,
   parseScResponse,
   generateMessageId,
   buildSoapMessage,
+  buildLogoutXml,
+  buildLogoutSoapMessage,
+  buildLogoutXmlEmpty,
+  buildLogoutXmlOnlyFsuId,
+  buildLogoutSoapMessageEmpty,
+  buildLogoutSoapMessageOnlyFsuId,
 };

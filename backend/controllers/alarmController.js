@@ -7,7 +7,7 @@ const AlarmManager = require("../utils/alarmManager");
 const alarmManager = new AlarmManager();
 
 /**
- * @desc    获取告警记录列表
+ * @desc    获取告警记录列表（包含上报和清除记录）
  * @route   GET /api/alarm/report/list
  * @access  Public
  */
@@ -23,8 +23,8 @@ exports.getAlarmList = async (req, res) => {
       creator,
     } = req.query;
 
-    // 构建查询条件（只查询report类型的记录）
-    const query = { type: "report" };
+    // 构建查询条件（查询所有类型的记录：report和clear）
+    const query = {};
 
     // 权限控制：子账号只能看到自己创建的告警记录
     if (req.user && !req.user.isAdmin()) {
@@ -143,6 +143,86 @@ exports.reportAlarmHandler = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "上报告警失败",
+      error: error.message,
+    });
+  }
+};
+
+/**
+ * @desc    清除告警（向SC服务器发送清除告警报文并记录）
+ * @route   POST /api/alarm/clear
+ * @access  Public
+ */
+exports.clearAlarmHandler = async (req, res) => {
+  try {
+    const alarmData = req.body;
+    const clientIp = req.ip || req.connection.remoteAddress;
+
+    logger.info(`收到告警清除请求，客户端IP: ${clientIp}`, { alarmData });
+
+    // 1. 参数校验
+    if (
+      !alarmData.fsuid ||
+      !alarmData.signalId ||
+      !alarmData.alarmDesc ||
+      !alarmData.deviceId ||
+      !alarmData.collectorIp
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "缺少必要参数",
+        error: "VALIDATION_ERROR",
+      });
+    }
+
+    // 2. 设置采集机IP并调用告警管理器清除告警
+    const startTime = Date.now();
+
+    // 设置采集机IP
+    alarmManager.setCollectorIP(alarmData.collectorIp);
+
+    const result = await alarmManager.clearAlarm(
+      {
+        deviceId: alarmData.deviceId,
+        fsuId: alarmData.fsuid,
+        monitorPointId: alarmData.signalId,
+        alarmLevel: alarmData.alarmLevel || "",
+        alarmDesc: alarmData.alarmDesc,
+      },
+      true,
+      "soap"
+    );
+
+    const duration = Date.now() - startTime;
+
+    // 3. 创建告警清除记录
+    const alarmRecord = await AlarmRecord.create({
+      type: "clear",
+      fsuid: alarmData.fsuid,
+      signalId: alarmData.signalId,
+      alarmDesc: alarmData.alarmDesc,
+      deviceId: alarmData.deviceId,
+      collectorIp: alarmData.collectorIp,
+      serialNo: result.alarmData?.serialNo,
+      status: result.success ? "success" : "failed",
+      responseCode: result.responseCode || "",
+      responseMessage: result.message || "",
+      creator: req.user ? req.user.username : alarmData.creator || "system",
+      reportTime: new Date(),
+    });
+
+    // 4. 返回结果
+    res.status(201).json({
+      success: result.success,
+      data: alarmRecord,
+      message: result.message,
+      processTime: duration,
+    });
+  } catch (error) {
+    logger.error(`清除告警失败: ${error.message}`, { error });
+    res.status(500).json({
+      success: false,
+      message: "清除告警失败",
       error: error.message,
     });
   }

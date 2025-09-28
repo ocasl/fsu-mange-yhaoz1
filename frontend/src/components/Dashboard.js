@@ -89,7 +89,7 @@ const Dashboard = ({ currentUser }) => {
     <div style={{ padding: 24 }}>
       <Title level={2}>仪表盘</Title>
       <Text type="secondary">
-        欢迎来到FSU管理系统，{currentUser?.realName || currentUser?.username}！
+        欢迎来到监控管理系统，{currentUser?.realName || currentUser?.username}！
         您的角色：
         {currentUser?.role === "admin"
           ? "总账号（管理员）"

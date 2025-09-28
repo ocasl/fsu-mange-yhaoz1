@@ -11,7 +11,7 @@ const readline = require("readline");
 
 const alarmManager = new AlarmManager();
 
-console.log("🚨 FSU告警管理系统");
+console.log("🚨 FSU告警监控管理系统");
 console.log("=".repeat(60));
 
 /**

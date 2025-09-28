@@ -23,7 +23,7 @@ router.use("/demo", demoRoutes);
 router.get("/", (req, res) => {
   res.json({
     success: true,
-    message: "FSU管理系统API服务",
+    message: "监控管理系统API服务",
     version: "1.0.0",
     timestamp: new Date().toISOString(),
   });

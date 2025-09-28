@@ -44,6 +44,7 @@ module.exports = {
     origin: [
       "http://localhost:3000", // 本地开发
       "http://49.233.218.18:3000", // 公网部署
+      "http://103.236.91.181:3000", // 新的公网部署地址
       process.env.CORS_ORIGIN,
     ].filter(Boolean),
   },

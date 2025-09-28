@@ -202,7 +202,7 @@ const AdminLayout = ({
               strong
               style={{ color: "#fff", marginLeft: 12, fontSize: 16 }}
             >
-              FSU管理系统
+              监控管理系统
             </Text>
           )}
         </div>
