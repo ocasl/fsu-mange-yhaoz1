@@ -47,38 +47,16 @@ const Dashboard = ({ currentUser }) => {
     }
   };
 
-  // 创建演示FSU数据
+  // 创建演示FSU数据 - 禁用功能
   const createDemoFsu = async () => {
-    setLoading(true);
-    try {
-      const response = await api.post("/demo/fsu");
-      if (response.data.success) {
-        message.success("演示FSU数据创建成功！请查看操作记录");
-        fetchSummary();
-      }
-    } catch (error) {
-      console.error("创建演示FSU失败:", error);
-      message.error("创建演示FSU失败");
-    } finally {
-      setLoading(false);
-    }
+    // 不执行任何逻辑，按钮点击无反应
+    console.log("创建演示FSU按钮被点击，但功能已禁用");
   };
 
-  // 创建演示告警数据
+  // 创建演示告警数据 - 禁用功能
   const createDemoAlarm = async () => {
-    setLoading(true);
-    try {
-      const response = await api.post("/demo/alarm");
-      if (response.data.success) {
-        message.success("演示告警数据创建成功！请查看操作记录");
-        fetchSummary();
-      }
-    } catch (error) {
-      console.error("创建演示告警失败:", error);
-      message.error("创建演示告警失败");
-    } finally {
-      setLoading(false);
-    }
+    // 不执行任何逻辑，按钮点击无反应
+    console.log("创建演示告警按钮被点击，但功能已禁用");
   };
 
   useEffect(() => {
@@ -162,14 +140,12 @@ const Dashboard = ({ currentUser }) => {
                 <Button
                   type="primary"
                   icon={<CloudServerOutlined />}
-                  loading={loading}
                   onClick={createDemoFsu}
                 >
                   创建演示FSU
                 </Button>
                 <Button
                   icon={<BellOutlined />}
-                  loading={loading}
                   onClick={createDemoAlarm}
                 >
                   创建演示告警

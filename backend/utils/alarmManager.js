@@ -376,7 +376,7 @@ class AlarmManager {
       // 发送HTTP请求
       const response = await smartAxios.post(scUrl, requestBody, {
         headers,
-        timeout: scConfig.timeout || 10000,
+        timeout: scConfig.timeout || 15000, // 使用更长的超时时间
         validateStatus: function (status) {
           return status >= 200 && status < 500;
         },
@@ -606,34 +606,33 @@ class AlarmManager {
   }
 
   /**
-   * 清除告警
+   * 清除告警（独立操作，不依赖活跃告警状态）
    * @param {Object} params - 清除参数
    * @param {boolean} sendToSC - 是否发送到SC服务器
    * @returns {Object} 清除告警信息和XML
    */
   async clearAlarm(params, sendToSC = false, sendMethod = "soap") {
-    const { deviceId, monitorPointId, fsuId = "61082143802203" } = params;
+    const { 
+      deviceId, 
+      monitorPointId, 
+      fsuId = "61082143802203", 
+      alarmDesc = "告警清除",
+      alarmLevel = "四级"
+    } = params;
 
-    const alarmKey = `${deviceId}_${monitorPointId}`;
-    const activeAlarm = this.activeAlarms.get(alarmKey);
+    // 生成新的告警序号（清除告警也需要唯一序号）
+    const serialNo = this.generateAlarmSerialNo();
 
-    if (!activeAlarm) {
-      return {
-        success: false,
-        message: `未找到活跃告警: 设备${deviceId}, 监控点${monitorPointId}`,
-      };
-    }
-
-    // 使用原始告警序号
+    // 构造清除告警数据
     const alarmData = {
-      serialNo: activeAlarm.serialNo,
+      serialNo,
       deviceId,
       alarmTime: this.getCurrentTimestamp(),
       fsuId,
       monitorPointId,
-      alarmLevel: "四级", // 清除时可以使用相同级别
-      alarmFlag: "结束",
-      alarmDesc: `${activeAlarm.alarmDesc}(已清除)`,
+      alarmLevel,
+      alarmFlag: "结束", // 清除告警标志
+      alarmDesc: alarmDesc.includes("(已清除)") ? alarmDesc : `${alarmDesc}(已清除)`,
     };
 
     // 生成完整的SEND_ALARM清除请求报文
@@ -642,14 +641,18 @@ class AlarmManager {
     // 也生成单独的TAlarm XML（用于显示）
     const alarmXml = this.generateAlarmXML(alarmData);
 
-    // 从活跃告警列表中移除
-    this.activeAlarms.delete(alarmKey);
+    // 检查是否有对应的活跃告警，如果有则从列表中移除（但不强制要求）
+    const alarmKey = `${deviceId}_${monitorPointId}`;
+    if (this.activeAlarms.has(alarmKey)) {
+      this.activeAlarms.delete(alarmKey);
+      logger.info("从活跃告警列表中移除对应告警", { deviceId, monitorPointId });
+    }
 
     logger.info("生成告警清除", {
-      serialNo: activeAlarm.serialNo,
+      serialNo,
       deviceId,
       monitorPointId,
-      originalDesc: activeAlarm.alarmDesc,
+      alarmDesc: alarmData.alarmDesc,
     });
 
     const result = {
@@ -657,13 +660,13 @@ class AlarmManager {
       alarmData,
       alarmXml, // 单独的TAlarm格式
       sendAlarmRequest, // 完整的SEND_ALARM请求报文
-      message: `告警清除成功 - 序号: ${activeAlarm.serialNo}`,
+      message: `告警清除成功 - 序号: ${serialNo}`,
     };
 
     // 如果需要发送到SC服务器
     if (sendToSC) {
       logger.info("发送告警清除到SC服务器", {
-        serialNo: activeAlarm.serialNo,
+        serialNo,
         deviceId,
         method: sendMethod,
       });
@@ -678,17 +681,19 @@ class AlarmManager {
       }
 
       result.sendResult = sendResult;
+      result.responseCode = sendResult.responseCode;
+      
       if (sendResult.success) {
         result.message += " - 已发送到SC服务器";
         logger.info("告警清除发送到SC服务器成功", {
-          serialNo: activeAlarm.serialNo,
+          serialNo,
           deviceId,
           method: sendMethod,
         });
       } else {
         result.message += ` - SC发送失败: ${sendResult.message}`;
         logger.warn("告警清除发送到SC服务器失败", {
-          serialNo: activeAlarm.serialNo,
+          serialNo,
           deviceId,
           method: sendMethod,
           error: sendResult.message,

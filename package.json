@@ -20,5 +20,9 @@
   "license": "MIT",
   "dependencies": {
     "node-vpn-client": "^0.0.16"
+  },
+  "devDependencies": {
+    "@craco/craco": "^7.1.0",
+    "terser-webpack-plugin": "^5.3.14"
   }
 }

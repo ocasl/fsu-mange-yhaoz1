@@ -5,7 +5,7 @@ module.exports = {
   host: process.env.SC_HOST || "sn.toweraiot.cn", // 修改默认地址
   port: process.env.SC_PORT || 8080,
   registerPath: process.env.SC_REGISTER_PATH || "/api/register",
-  timeout: parseInt(process.env.SC_TIMEOUT) || 5000,
+  timeout: parseInt(process.env.SC_TIMEOUT) || 15000, // 增加到15秒
 
   // 协议相关配置
   protocol: "http", // 或 https

@@ -885,7 +885,8 @@ const FsuOnlineManagement = () => {
       >
         <Alert
           message="注意"
-          description="如果只需FSU上线，可仅填写必填项；如需其他设备在线，请补充填写对应设备ID。从提交到完成上线，通常耗时约5分钟。"
+          description=" 注意：如果只需FSU上线，仅填写必填项;如需其他设备在线，请补充填写对应设备ID；确认提交后自动上线。如需站点下线永久删除站点！（下线设备按钮请勿使用）
+"
           type="info"
           showIcon
           style={{ marginBottom: 24 }}

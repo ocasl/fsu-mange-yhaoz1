@@ -1,0 +1,6 @@
+# 请创建 frontend/.env 文件，内容如下：
+
+GENERATE_SOURCEMAP=false
+INLINE_RUNTIME_CHUNK=false
+ESLINT_NO_DEV_ERRORS=true
+

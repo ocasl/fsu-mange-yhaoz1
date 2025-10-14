@@ -186,7 +186,7 @@ exports.clearAlarmHandler = async (req, res) => {
         deviceId: alarmData.deviceId,
         fsuId: alarmData.fsuid,
         monitorPointId: alarmData.signalId,
-        alarmLevel: alarmData.alarmLevel || "",
+        alarmLevel: alarmData.alarmLevel || "四级",
         alarmDesc: alarmData.alarmDesc,
       },
       true,

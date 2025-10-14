@@ -2,6 +2,7 @@
   "name": "fsu-frontend",
   "version": "1.0.0",
   "private": true,
+  "homepage": ".",
   "dependencies": {
     "@ant-design/icons": "^5.2.0",
     "@ant-design/pro-components": "^2.8.10",
@@ -18,9 +19,9 @@
     "vue-router": "^4.5.1"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
+    "start": "craco start",
+    "build": "craco build",
+    "test": "craco test",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {
@@ -40,5 +41,8 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "terser-webpack-plugin": "^5.3.14"
   }
 }

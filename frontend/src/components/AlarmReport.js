@@ -590,7 +590,7 @@ const AlarmReport = () => {
       >
         <Alert
           message="重要提示"
-          description="采集机IP请前往OMC日志系统查询最后一次注册报文中的SCIP，按需填写信息提交后，向运维上报告警，请仔细检查并慎重提交!"
+          description="重要提示：按需填写信息提交后，立即向运维上报告警，采集机IP请前往OMC日志系统查询最后一次注册报文中的SCIP，请仔细检查并慎重提交!"
           type="warning"
           showIcon
           style={{ marginBottom: 24 }}
@@ -706,7 +706,7 @@ const AlarmReport = () => {
       >
         <Alert
           message="重要提示"
-          description="清除告警将向运监平台发送告警清除报文，请确认要清除的告警信息准确无误！"
+          description="按需填写信息提交后，立即向运维清除告警，采集机IP请前往OMC日志系统查询最后一次注册报文中的SCIP，请仔细检查并慎重提交!"
           type="info"
           showIcon
           style={{ marginBottom: 24 }}

@@ -326,7 +326,7 @@ class DeviceDataManager {
             id: "0406115001",
             setupVal: "0",
             status: "0",
-            measuredVal: "0.000000",
+            measuredVal: "0.150000", // 0.1-0.2范围内的值
           },
           {
             type: "3",
@@ -347,28 +347,134 @@ class DeviceDataManager {
             id: "0406143001",
             setupVal: "0",
             status: "0",
-            measuredVal: "56.000000",
-          }, // 温度
+            measuredVal: "56.400000",
+          }, // 均充电压设定值
           {
             type: "3",
             id: "0406144001",
             setupVal: "0",
             status: "0",
             measuredVal: "54.000000",
-          },
+          }, // 浮充电压设定值
           {
             type: "3",
             id: "0406146001",
             setupVal: "0",
             status: "0",
-            measuredVal: "47.000000",
+            measuredVal: "46.000000", // 固定值46
           },
           {
             type: "3",
             id: "0406147001",
             setupVal: "0",
             status: "0",
-            measuredVal: "45.000000",
+            measuredVal: "44.000000", // 固定值44
+          },
+          // 新增0445系列信号量 (Type="3")
+          {
+            type: "3",
+            id: "0445101001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "10.630000", // 固定值10.63
+          },
+          {
+            type: "3",
+            id: "0445102001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "23.720000", // 固定值23.72
+          },
+          {
+            type: "3",
+            id: "0445103001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "0.000000", // 固定值0.00
+          },
+          {
+            type: "3",
+            id: "0445104001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "0.000000", // 固定值0.00
+          },
+          {
+            type: "3",
+            id: "0445105001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "10.330000", // 固定值10.33
+          },
+          {
+            type: "3",
+            id: "0445106001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "52.870000", // 固定值52.87
+          },
+          {
+            type: "3",
+            id: "0445107001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "53.900000", // 固定值53.90
+          },
+          {
+            type: "3",
+            id: "0445108001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "0.000000", // 固定值0.00
+          },
+          {
+            type: "3",
+            id: "0445109001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "0.000000", // 固定值0.00
+          },
+          {
+            type: "3",
+            id: "0445112001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "0.000000", // 固定值0.00
+          },
+          {
+            type: "3",
+            id: "0445113001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "0.000000", // 固定值0.00
+          },
+          {
+            type: "3",
+            id: "0445114001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "0.000000", // 固定值0.00
+          },
+          {
+            type: "3",
+            id: "0445115001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "0.000000", // 固定值0.00
+          },
+          {
+            type: "3",
+            id: "0445116001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "0.000000", // 固定值0.00
+          },
+          {
+            type: "3",
+            id: "0445117001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "0.000000", // 固定值0.00
           },
           // 新增字符串信号 (Type="6")
           {
@@ -438,11 +544,11 @@ class DeviceDataManager {
                     range = 0;
                     break;
                   case "0406143001": // 均充电压设定值
-                    setValue = 56;
+                    setValue = 56.4;
                     range = 0;
                     break;
                   case "0406144001": // 浮充电压设定值
-                    setValue = 53.5;
+                    setValue = 54;
                     range = 0;
                     break;
                   case "0406146001": // 一级低压脱离设定值
@@ -451,6 +557,40 @@ class DeviceDataManager {
                     break;
                   case "0406147001": // 二级低压脱离设定值
                     setValue = 44;
+                    range = 0;
+                    break;
+                  // 新增0445系列信号量固定值配置
+                  case "0445101001":
+                    setValue = 10.63;
+                    range = 0;
+                    break;
+                  case "0445102001":
+                    setValue = 23.72;
+                    range = 0;
+                    break;
+                  case "0445103001":
+                  case "0445104001":
+                  case "0445108001":
+                  case "0445109001":
+                  case "0445112001":
+                  case "0445113001":
+                  case "0445114001":
+                  case "0445115001":
+                  case "0445116001":
+                  case "0445117001":
+                    setValue = 0.00;
+                    range = 0;
+                    break;
+                  case "0445105001":
+                    setValue = 10.33;
+                    range = 0;
+                    break;
+                  case "0445106001":
+                    setValue = 52.87;
+                    range = 0;
+                    break;
+                  case "0445107001":
+                    setValue = 53.90;
                     range = 0;
                     break;
                   default:
@@ -790,7 +930,7 @@ class DeviceDataManager {
             id: "0406115001",
             setupVal: "0",
             status: "0",
-            measuredVal: "0.000000",
+            measuredVal: "0.150000", // 0.1-0.2范围内的值
           },
           {
             type: "3",
@@ -811,7 +951,7 @@ class DeviceDataManager {
             id: "0406143001",
             setupVal: "0",
             status: "0",
-            measuredVal: "56.000000",
+            measuredVal: "56.400000",
           },
           {
             type: "3",
@@ -825,14 +965,120 @@ class DeviceDataManager {
             id: "0406146001",
             setupVal: "0",
             status: "0",
-            measuredVal: "47.000000",
+            measuredVal: "46.000000", // 固定值46
           },
           {
             type: "3",
             id: "0406147001",
             setupVal: "0",
             status: "0",
-            measuredVal: "45.000000",
+            measuredVal: "44.000000", // 固定值44
+          },
+          // 新增0445系列信号量 (Type="3")
+          {
+            type: "3",
+            id: "0445101001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "10.630000", // 固定值10.63
+          },
+          {
+            type: "3",
+            id: "0445102001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "23.720000", // 固定值23.72
+          },
+          {
+            type: "3",
+            id: "0445103001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "0.000000", // 固定值0.00
+          },
+          {
+            type: "3",
+            id: "0445104001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "0.000000", // 固定值0.00
+          },
+          {
+            type: "3",
+            id: "0445105001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "10.330000", // 固定值10.33
+          },
+          {
+            type: "3",
+            id: "0445106001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "52.870000", // 固定值52.87
+          },
+          {
+            type: "3",
+            id: "0445107001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "53.900000", // 固定值53.90
+          },
+          {
+            type: "3",
+            id: "0445108001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "0.000000", // 固定值0.00
+          },
+          {
+            type: "3",
+            id: "0445109001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "0.000000", // 固定值0.00
+          },
+          {
+            type: "3",
+            id: "0445112001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "0.000000", // 固定值0.00
+          },
+          {
+            type: "3",
+            id: "0445113001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "0.000000", // 固定值0.00
+          },
+          {
+            type: "3",
+            id: "0445114001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "0.000000", // 固定值0.00
+          },
+          {
+            type: "3",
+            id: "0445115001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "0.000000", // 固定值0.00
+          },
+          {
+            type: "3",
+            id: "0445116001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "0.000000", // 固定值0.00
+          },
+          {
+            type: "3",
+            id: "0445117001",
+            setupVal: "0",
+            status: "0",
+            measuredVal: "0.000000", // 固定值0.00
           },
           // 新增字符串信号 (Type="6")
           {
@@ -2740,49 +2986,155 @@ class DeviceDataManager {
           id: "0406115001",
           setupVal: "0",
           status: "0",
-          getMeasuredVal: () => (Math.random() * 2).toFixed(6),
+          getMeasuredVal: () => (0.1 + Math.random() * 0.1).toFixed(6), // 0.1-0.2之间
         },
         {
           type: "3",
           id: "0406123001",
           setupVal: "0",
           status: "0",
-          getMeasuredVal: () => (3 + Math.random() * 2).toFixed(6),
+          getMeasuredVal: () => "4.000000", // 固定值4
         },
         {
           type: "3",
           id: "0406126001",
           setupVal: "0",
           status: "0",
-          getMeasuredVal: () => (Math.random() * 2).toFixed(6),
+          getMeasuredVal: () => "1.000000", // 固定值1
         },
         {
           type: "3",
           id: "0406143001",
           setupVal: "0",
           status: "0",
-          getMeasuredVal: () => (50 + Math.random() * 20).toFixed(6),
+          getMeasuredVal: () => "56.400000", // 固定值56.4
         },
         {
           type: "3",
           id: "0406144001",
           setupVal: "0",
           status: "0",
-          getMeasuredVal: () => (50 + Math.random() * 20).toFixed(6),
+          getMeasuredVal: () => "54.000000", // 固定值54
         },
         {
           type: "3",
           id: "0406146001",
           setupVal: "0",
           status: "0",
-          getMeasuredVal: () => (40 + Math.random() * 20).toFixed(6),
+          getMeasuredVal: () => "46.000000", // 固定值46
         },
         {
           type: "3",
           id: "0406147001",
           setupVal: "0",
           status: "0",
-          getMeasuredVal: () => (40 + Math.random() * 20).toFixed(6),
+          getMeasuredVal: () => "44.000000", // 固定值44
+        },
+        // 新增0445系列信号量 (Type="3")
+        {
+          type: "3",
+          id: "0445101001",
+          setupVal: "0",
+          status: "0",
+          getMeasuredVal: () => "10.630000", // 固定值10.63
+        },
+        {
+          type: "3",
+          id: "0445102001",
+          setupVal: "0",
+          status: "0",
+          getMeasuredVal: () => "23.720000", // 固定值23.72
+        },
+        {
+          type: "3",
+          id: "0445103001",
+          setupVal: "0",
+          status: "0",
+          getMeasuredVal: () => "0.000000", // 固定值0.00
+        },
+        {
+          type: "3",
+          id: "0445104001",
+          setupVal: "0",
+          status: "0",
+          getMeasuredVal: () => "0.000000", // 固定值0.00
+        },
+        {
+          type: "3",
+          id: "0445105001",
+          setupVal: "0",
+          status: "0",
+          getMeasuredVal: () => "10.330000", // 固定值10.33
+        },
+        {
+          type: "3",
+          id: "0445106001",
+          setupVal: "0",
+          status: "0",
+          getMeasuredVal: () => "52.870000", // 固定值52.87
+        },
+        {
+          type: "3",
+          id: "0445107001",
+          setupVal: "0",
+          status: "0",
+          getMeasuredVal: () => "53.900000", // 固定值53.90
+        },
+        {
+          type: "3",
+          id: "0445108001",
+          setupVal: "0",
+          status: "0",
+          getMeasuredVal: () => "0.000000", // 固定值0.00
+        },
+        {
+          type: "3",
+          id: "0445109001",
+          setupVal: "0",
+          status: "0",
+          getMeasuredVal: () => "0.000000", // 固定值0.00
+        },
+        {
+          type: "3",
+          id: "0445112001",
+          setupVal: "0",
+          status: "0",
+          getMeasuredVal: () => "0.000000", // 固定值0.00
+        },
+        {
+          type: "3",
+          id: "0445113001",
+          setupVal: "0",
+          status: "0",
+          getMeasuredVal: () => "0.000000", // 固定值0.00
+        },
+        {
+          type: "3",
+          id: "0445114001",
+          setupVal: "0",
+          status: "0",
+          getMeasuredVal: () => "0.000000", // 固定值0.00
+        },
+        {
+          type: "3",
+          id: "0445115001",
+          setupVal: "0",
+          status: "0",
+          getMeasuredVal: () => "0.000000", // 固定值0.00
+        },
+        {
+          type: "3",
+          id: "0445116001",
+          setupVal: "0",
+          status: "0",
+          getMeasuredVal: () => "0.000000", // 固定值0.00
+        },
+        {
+          type: "3",
+          id: "0445117001",
+          setupVal: "0",
+          status: "0",
+          getMeasuredVal: () => "0.000000", // 固定值0.00
         },
         {
           type: "6",
