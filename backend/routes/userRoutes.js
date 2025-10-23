@@ -53,4 +53,13 @@ router.delete(
   userController.deleteUser
 );
 
+// 修改用户密码 - 需要管理员权限
+router.patch(
+  "/:userId/password",
+  authenticateToken,
+  requireAdmin,
+  userLogger,
+  userController.updateUserPassword
+);
+
 module.exports = router;

@@ -10,12 +10,12 @@ const operationLogSchema = new mongoose.Schema(
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      required: false, // 登录失败等场景可能没有userId
       description: "操作用户ID",
     },
     username: {
       type: String,
-      required: true,
+      required: false, // 登录失败等场景可能没有username
       description: "操作用户名",
     },
 
@@ -72,7 +72,7 @@ const operationLogSchema = new mongoose.Schema(
     // 客户端信息
     ip: {
       type: String,
-      required: true,
+      required: false, // 某些场景可能获取不到IP
       description: "客户端IP地址",
     },
     userAgent: {

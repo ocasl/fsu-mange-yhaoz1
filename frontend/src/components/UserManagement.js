@@ -23,6 +23,7 @@ import {
   TeamOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
+  KeyOutlined,
 } from "@ant-design/icons";
 import api from "../services/api";
 import UserRegister from "./UserRegister";
@@ -39,6 +40,8 @@ const UserManagement = () => {
   });
   const [filters, setFilters] = useState({});
   const [registerModalVisible, setRegisterModalVisible] = useState(false);
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+  const [selectedUser, setSelectedUser] = useState(null);
   const [stats, setStats] = useState({
     total: 0,
     admins: 0,
@@ -47,6 +50,7 @@ const UserManagement = () => {
   });
 
   const [form] = Form.useForm();
+  const [passwordForm] = Form.useForm();
 
   // 获取用户列表
   const fetchUsers = async (params = {}) => {
@@ -124,6 +128,35 @@ const UserManagement = () => {
     } catch (error) {
       console.error("删除用户失败:", error);
       message.error("删除用户失败");
+    }
+  };
+
+  // 打开修改密码模态框
+  const openPasswordModal = (user) => {
+    setSelectedUser(user);
+    setPasswordModalVisible(true);
+    passwordForm.resetFields();
+  };
+
+  // 修改用户密码
+  const handleUpdatePassword = async (values) => {
+    try {
+      const response = await api.patch(
+        `/user/${selectedUser._id}/password`,
+        { newPassword: values.newPassword }
+      );
+
+      if (response.data.success) {
+        message.success("密码修改成功");
+        setPasswordModalVisible(false);
+        setSelectedUser(null);
+        passwordForm.resetFields();
+      } else {
+        message.error(response.data.message || "修改密码失败");
+      }
+    } catch (error) {
+      console.error("修改密码失败:", error);
+      message.error(error.response?.data?.message || "修改密码失败");
     }
   };
 
@@ -212,7 +245,7 @@ const UserManagement = () => {
     {
       title: "操作",
       key: "action",
-      width: 200,
+      width: 250,
       fixed: "right",
       render: (_, record) => (
         <Space size="small">
@@ -234,6 +267,15 @@ const UserManagement = () => {
               启用
             </Button>
           )}
+
+          <Button
+            size="small"
+            type="text"
+            icon={<KeyOutlined />}
+            onClick={() => openPasswordModal(record)}
+          >
+            改密
+          </Button>
 
           <Popconfirm
             title="确定要删除这个用户吗？"
@@ -382,6 +424,73 @@ const UserManagement = () => {
           fetchUsers();
         }}
       />
+
+      {/* 修改密码模态框 */}
+      <Modal
+        title={`修改密码 - ${selectedUser?.username}`}
+        open={passwordModalVisible}
+        onCancel={() => {
+          setPasswordModalVisible(false);
+          setSelectedUser(null);
+          passwordForm.resetFields();
+        }}
+        footer={null}
+        width={500}
+      >
+        <Form
+          form={passwordForm}
+          onFinish={handleUpdatePassword}
+          layout="vertical"
+          style={{ marginTop: 20 }}
+        >
+          <Form.Item
+            label="新密码"
+            name="newPassword"
+            rules={[
+              { required: true, message: "请输入新密码" },
+              { min: 6, message: "密码长度至少为6位" },
+            ]}
+          >
+            <Input.Password placeholder="请输入新密码（至少6位）" />
+          </Form.Item>
+
+          <Form.Item
+            label="确认密码"
+            name="confirmPassword"
+            dependencies={["newPassword"]}
+            rules={[
+              { required: true, message: "请确认新密码" },
+              ({ getFieldValue }) => ({
+                validator(_, value) {
+                  if (!value || getFieldValue("newPassword") === value) {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject(new Error("两次输入的密码不一致"));
+                },
+              }),
+            ]}
+          >
+            <Input.Password placeholder="请再次输入新密码" />
+          </Form.Item>
+
+          <Form.Item style={{ marginBottom: 0, textAlign: "right" }}>
+            <Space>
+              <Button
+                onClick={() => {
+                  setPasswordModalVisible(false);
+                  setSelectedUser(null);
+                  passwordForm.resetFields();
+                }}
+              >
+                取消
+              </Button>
+              <Button type="primary" htmlType="submit">
+                确定修改
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
     </div>
   );
 };

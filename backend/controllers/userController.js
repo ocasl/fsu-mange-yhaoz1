@@ -556,6 +556,89 @@ const deleteUser = async (req, res) => {
   }
 };
 
+/**
+ * 修改用户密码（管理员功能）
+ */
+const updateUserPassword = async (req, res) => {
+  const startTime = Date.now();
+
+  try {
+    const { userId } = req.params;
+    const { newPassword } = req.body;
+    const currentUser = req.user;
+
+    // 参数验证
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "新密码不能为空且长度至少为6位",
+        error: "INVALID_PASSWORD",
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "用户不存在",
+        error: "USER_NOT_FOUND",
+      });
+    }
+
+    // 更新密码
+    user.password = newPassword;
+    await user.save();
+
+    // 记录操作日志
+    await OperationLog.logOperation({
+      userId: currentUser._id,
+      username: currentUser.username,
+      operation: "UPDATE_PASSWORD",
+      module: "USER",
+      description: `修改用户密码: ${user.username}`,
+      method: req.method,
+      url: req.originalUrl,
+      requestData: { userId, targetUsername: user.username },
+      success: true,
+      ip: req.ip,
+      userAgent: req.get("User-Agent"),
+      duration: Date.now() - startTime,
+    });
+
+    res.json({
+      success: true,
+      message: "密码修改成功",
+      data: {
+        username: user.username,
+      },
+    });
+  } catch (error) {
+    logger.error("修改密码错误:", error);
+
+    await OperationLog.logOperation({
+      userId: req.user._id,
+      username: req.user.username,
+      operation: "UPDATE_PASSWORD",
+      module: "USER",
+      description: "修改用户密码失败 - 系统异常",
+      method: req.method,
+      url: req.originalUrl,
+      requestData: req.body,
+      success: false,
+      errorMessage: error.message,
+      ip: req.ip,
+      userAgent: req.get("User-Agent"),
+      duration: Date.now() - startTime,
+    });
+
+    res.status(500).json({
+      success: false,
+      message: "修改密码失败",
+      error: "UPDATE_PASSWORD_ERROR",
+    });
+  }
+};
+
 module.exports = {
   login,
   register,
@@ -563,4 +646,5 @@ module.exports = {
   getUserList,
   updateUserStatus,
   deleteUser,
+  updateUserPassword,
 };
